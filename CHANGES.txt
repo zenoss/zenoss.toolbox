@@ -1,0 +1,8 @@
+Changelog
+=========
+
+0.1-dev (unreleased)
+--------------------
+
+* Added zodbscan, which detects and reports on POSKeyErrors.
+
