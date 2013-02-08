@@ -28,5 +28,5 @@ attribute referencing the missing oid, and the class that should be there::
        Found 1 dangling references
        Scanned 96294 out of 96294 reachable objects
 
-Author: Ian (in case it breaks)
+Author: Ian McCracken (ian@zenoss.com)
 
