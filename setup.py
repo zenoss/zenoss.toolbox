@@ -1,11 +1,14 @@
 from setuptools import setup, find_packages
+import os
+
+here = lambda *x:os.path.join(os.path.dirname(__file__), *x)
 
 version = '0.1'
 
 long_description = (
-    open('README.rst').read()
+    open(here('README.rst')).read()
     + '\n' +
-    open('CHANGES.txt').read()
+    open(here('CHANGES.txt')).read()
     + '\n')
 
 setup(name='zenoss.toolbox',
@@ -18,8 +21,8 @@ setup(name='zenoss.toolbox',
         "Programming Language :: Python",
         ],
       keywords='',
-      author='',
-      author_email='',
+      author='Zenoss, Inc.',
+      author_email='dev@zenoss.com',
       url='git@github.com:zenoss/zenoss.toolbox.git',
       license='Proprietary',
       packages=find_packages('src'),

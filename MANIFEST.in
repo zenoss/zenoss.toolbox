@@ -1,0 +1,5 @@
+include README.rst
+include scripts.conf
+recursive-include *.txt
+recursive-include *.py
+graft src
