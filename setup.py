@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-import os
 
 version = '0.1'
 
@@ -26,8 +25,8 @@ setup(name='zenoss.toolbox',
       keywords='',
       author='',
       author_email='',
-      url='http://svn.plone.org/svn/collective/',
-      license='gpl',
+      url='git@github.com:zenoss/zenoss.toolbox.git',
+      license='Proprietary',
       packages=find_packages('src'),
       package_dir = {'': 'src'},
       namespace_packages=['zenoss'],
@@ -35,9 +34,6 @@ setup(name='zenoss.toolbox',
       zip_safe=False,
       install_requires=[
           'setuptools',
-          # -*- Extra requirements: -*-
       ],
-      entry_points="""
-      # -*- Entry points: -*-
-      """,
+      entry_points=open('scripts.conf').read(),
       )
