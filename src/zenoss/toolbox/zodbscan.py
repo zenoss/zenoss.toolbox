@@ -175,11 +175,11 @@ class PKEReporter(object):
         print "FOUND DANGLING REFERENCE"
         print "PATH", '/'.join(path)
         print "TYPE", parent_klass
-        print "OID", repr(parent_oid), u64(parent_oid)
+        print "OID", repr(parent_oid), "0x%08x" % u64(parent_oid), u64(parent_oid)
         print "Refers to a missing object:"
         print "    NAME", name
         print "    TYPE", klass
-        print "    OID", repr(oid), u64(oid)
+        print "    OID", repr(oid), "0x%08x" % u64(oid), u64(oid)
         print
 
     def verify(self, root):
