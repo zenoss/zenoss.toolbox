@@ -171,16 +171,17 @@ class PKEReporter(object):
         name, klass = self.analyze(*ancestors[-2:])
         sys.stderr.write(' '*80)
         sys.stderr.flush()
-        print
-        print "FOUND DANGLING REFERENCE"
-        print "PATH", '/'.join(path)
-        print "TYPE", parent_klass
-        print "OID", "0x%08x" % u64(parent_oid), repr(parent_oid), u64(parent_oid)
-        print "Refers to a missing object:"
-        print "    NAME", name
-        print "    TYPE", klass
-        print "    OID", "0x%08x" % u64(oid), repr(oid), u64(oid)
-        print
+        print '\n'.join([
+            "FOUND DANGLING REFERENCE",
+            "PATH %s" % '/'.join(path),
+            "TYPE %s" % parent_klass,
+            "OID 0x%08x %s %s" % (u64(parent_oid), repr(parent_oid), u64(parent_oid)),
+            "Refers to a missing object:",
+            "    NAME %s" % name,
+            "    TYPE %s" % klass,
+            "    OID 0x%08x %s %s" % (u64(oid), repr(oid), u64(oid)),
+            ""
+        ])
 
     def verify(self, root):
         seen = set()
