@@ -64,29 +64,46 @@ def get_refs(p):
 
 def get_config(database=None):
     _global_conf = getGlobalConfiguration()
-    if database:
-        _global_conf['mysqldb'] = database
-    zodb_socket = _global_conf.get('mysqlsocket')
-    if zodb_socket:
-        _global_conf['socket-option'] = 'unix_socket %s' % zodb_socket
+
+    if 'zodb-db' in _global_conf:
+        # 4.2.x
+        zodb_socket = _global_conf.get('zodb-socket')
+
+        _my_relstorage_conf = _global_conf
     else:
-        _global_conf['socket-option'] = ''
+        # 4.1.x
+        zodb_socket = _global_conf.get('mysqlsocket')
+                
+        _my_relstorage_conf = {
+            'zodb-host':        _global_conf['host'],
+            'zodb-port':        _global_conf['port'],
+            'zodb-db':          _global_conf['mysqldb'],
+            'zodb-user':        _global_conf['mysqluser'],
+            'zodb-password':    _global_conf['mysqlpasswd'],
+        }
+        
+    if database:
+        _my_relstorage_conf['zodb-db'] = database
+    if zodb_socket:
+        _my_relstorage_conf['socket'] = 'unix_socket %s' % zodb_socket
+    else:
+        _my_relstorage_conf['socket'] = ''
 
     _storage_config = """
         <relstorage>
             pack-gc true
             keep-history false
             <mysql>
-                host %(host)s
-                port %(port)s
-                db %(mysqldb)s
-                user %(mysqluser)s
-                passwd %(mysqlpasswd)s
-                %(socket-option)s
+                host %(zodb-host)s
+                port %(zodb-port)s
+                db %(zodb-db)s
+                user %(zodb-user)s
+                passwd %(zodb-password)s
+                %(socket)s
             </mysql>
         </relstorage>
-        """ % _global_conf
-
+    """ % _my_relstorage_conf
+    
     with tempfile.NamedTemporaryFile() as configfile:
         configfile.write(_storage_config)
         configfile.flush()
