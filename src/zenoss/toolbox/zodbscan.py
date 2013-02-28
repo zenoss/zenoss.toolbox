@@ -63,31 +63,31 @@ def get_refs(p):
 
 
 def get_config(database=None):
-    _global_conf = getGlobalConfiguration()
+    conf = getGlobalConfiguration()
 
-    if 'zodb-db' in _global_conf:
-        # 4.2.x
-        zodb_socket = _global_conf.get('zodb-socket')
-
-        _my_relstorage_conf = _global_conf
-    else:
-        # 4.1.x
-        zodb_socket = _global_conf.get('mysqlsocket')
-                
-        _my_relstorage_conf = {
-            'zodb-host':        _global_conf['host'],
-            'zodb-port':        _global_conf['port'],
-            'zodb-db':          _global_conf['mysqldb'],
-            'zodb-user':        _global_conf['mysqluser'],
-            'zodb-password':    _global_conf['mysqlpasswd'],
-        }
-        
     if database:
-        _my_relstorage_conf['zodb-db'] = database
-    if zodb_socket:
-        _my_relstorage_conf['socket'] = 'unix_socket %s' % zodb_socket
+        conf['zodb-db'] = conf['mysqldb'] = database
     else:
-        _my_relstorage_conf['socket'] = ''
+        conf['mysqldb'] = conf.get('mysqldb', conf.get('zodb-db'))
+        conf['zodb-db'] = conf.get('zodb-db', conf.get('mysqldb'))
+
+    zodb_socket = conf.get('mysqlsocket',
+                                   conf.get('zodb-socket'))
+
+    if zodb_socket:
+        conf['socket'] = 'unix_socket %s' % zodb_socket
+    else:
+        conf['socket'] = ''
+
+    newer_conf = {
+        'zodb-host': conf.get('host'),
+        'zodb-port': conf.get('port'),
+        'zodb-db': conf.get('mysqldb'),
+        'zodb-user': conf.get('mysqluser'),
+        'zodb-password': conf.get('mysqlpasswd')
+    }
+
+    newer_conf.update(conf)
 
     _storage_config = """
         <relstorage>
@@ -102,8 +102,8 @@ def get_config(database=None):
                 %(socket)s
             </mysql>
         </relstorage>
-    """ % _my_relstorage_conf
-    
+        """ % newer_conf
+
     with tempfile.NamedTemporaryFile() as configfile:
         configfile.write(_storage_config)
         configfile.flush()
@@ -171,6 +171,13 @@ class PKEReporter(object):
                     break
         return name, pickler.klass
 
+    @staticmethod
+    def oid_versions(oid):
+        u64ed = u64(oid)
+        oid_0xstyle = "0x%08x" % u64ed
+        repred = repr(oid)
+        return u64ed, oid_0xstyle, repred
+
     def report(self, oid, ancestors):
         parent_oid = ancestors[-2]
         parent_klass = None
@@ -188,17 +195,20 @@ class PKEReporter(object):
         name, klass = self.analyze(*ancestors[-2:])
         sys.stderr.write(' '*80)
         sys.stderr.flush()
-        print '\n'.join([
-            "FOUND DANGLING REFERENCE",
-            "PATH %s" % '/'.join(path),
-            "TYPE %s" % parent_klass,
-            "OID 0x%08x %s %s" % (u64(parent_oid), repr(parent_oid), u64(parent_oid)),
-            "Refers to a missing object:",
-            "    NAME %s" % name,
-            "    TYPE %s" % klass,
-            "    OID 0x%08x %s %s" % (u64(oid), repr(oid), u64(oid)),
-            ""
-        ])
+        par_u64, par_0x, par_rep = self.oid_versions(parent_oid)
+        oid_u64, oid_0x, oid_rep = self.oid_versions(oid)
+        print """
+FOUND DANGLING REFERENCE
+PATH {path}
+TYPE {type}
+OID {par_0x} {par_rep} {par_u64}
+Refers to a missing object:
+    NAME {name}
+    TYPE {klass}
+    OID", {oid_0x} {oid_rep} {oid_u64}
+""".format(path='/'.join(path), type=parent_klass, name=name, klass=klass,
+          par_u64=par_u64, par_0x=par_0x, par_rep=par_rep,
+          oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep)
 
     def verify(self, root):
         seen = set()
