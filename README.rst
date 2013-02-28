@@ -18,11 +18,11 @@ attribute referencing the missing oid, and the class that should be there::
        FOUND DANGLING REFERENCE
        PATH /zport/dmd/Devices/devices/ian
        TYPE <class 'Products.ZenModel.Device.Device'>
-       OID '\x00\x00\x00\x00\x00\x01\xff8' 130872
+       OID 0x0001ff38 '\x00\x00\x00\x00\x00\x01\xff8' 130872
        Refers to a missing object:
            NAME os
            TYPE <class 'Products.ZenModel.OperatingSystem.OperatingSystem'>
-           OID '\x00\x00\x00\x00\x00\x01\xffC' 130883
+           OID 0x0001ff43 '\x00\x00\x00\x00\x00\x01\xffC' 130883
                                                                                        
        SUMMARY:
        Found 1 dangling references
