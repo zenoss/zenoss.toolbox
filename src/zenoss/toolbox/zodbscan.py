@@ -198,6 +198,7 @@ class PKEReporter(object):
                 name, klass = self.analyze(a, b)
                 path.append(name)
             parent_klass = klass
+        path=[o for o in path if o is not None]
         name, klass = self.analyze(*ancestors[-2:])
         sys.stderr.write(' '*80)
         sys.stderr.flush()
