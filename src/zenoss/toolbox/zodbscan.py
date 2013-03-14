@@ -175,10 +175,16 @@ class PKEReporter(object):
         if not name:
             # Check the actual attributes on the parent
             parent = self._conn[parent_oid]
-            for k, v in parent.__dict__.iteritems():
-                if v == child:
-                    name = k
-                    break
+            try:
+                for k, v in parent.__dict__.iteritems():
+                    try:
+                        if v == child:
+                            name = k
+                            break
+                    except Exception:
+                        pass
+            except AttributeError:
+                pass
         return name, pickler.klass
 
     @staticmethod
