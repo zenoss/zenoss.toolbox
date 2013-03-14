@@ -37,11 +37,17 @@ class Analyzer(UnpicklerBase):
         self._marker = object()
         self.klass = None
 
-    def persistent_load(self, (oid, klass)):
-        if oid == self.problem_oid:
-            self.klass = klass
-            return self._marker
-
+    def persistent_load(self, pickle_id):
+        if isinstance(pickle_id, tuple):
+            oid, klass = pickle_id
+            if oid == self.problem_oid:
+                self.klass = klass
+                return self._marker
+        else:
+            # what the heck is pickle_id?
+            # import pdb; pdb.set_trace()
+            print "### ERROR: pickle_id not tuple: %s" % repr(pickle_id)
+            pass
 
 def get_refs(p):
     """
