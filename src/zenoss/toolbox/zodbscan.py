@@ -50,8 +50,6 @@ class Analyzer(UnpicklerBase):
             except Exception:
                 # what the heck is pickle_id?
                 print "### ERROR: pickle_id not tuple:", repr(pickle_id)
-                # import pdb; pdb.set_trace()
-                pass
 
 def get_refs(p):
     """
