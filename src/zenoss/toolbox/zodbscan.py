@@ -44,12 +44,13 @@ class Analyzer(UnpicklerBase):
                 self.klass = klass
                 return self._marker
         else:
-            try:
-                oid_u64, oid_0x, oid_rep = PKEReporter.oid_versions(pickle_id)
-                print "### WARNING: pickle_id is not tuple - oid:", oid_0x, oid_rep, oid_u64
-            except Exception:
-                # what the heck is pickle_id?
-                print "### ERROR: pickle_id not tuple:", repr(pickle_id)
+            pass
+            #try:
+            #    oid_u64, oid_0x, oid_rep = PKEReporter.oid_versions(pickle_id)
+            #    print "### WARNING: pickle_id is not tuple - oid:", oid_0x, oid_rep, oid_u64
+            #except Exception:
+            #    # what the heck is pickle_id?
+            #    print "### ERROR: pickle_id not tuple:", repr(pickle_id)
 
 def get_refs(p):
     """
