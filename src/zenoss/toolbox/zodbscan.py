@@ -182,7 +182,7 @@ class PKEReporter(object):
                             break
                     except Exception:
                         pass
-            except AttributeError:
+            except AttributeError:  # catch these errors -  AttributeError: 'BTrees.OIBTree.OIBTree' object has no attribute '__dict__'
                 pass
         return name, pickler.klass
 
