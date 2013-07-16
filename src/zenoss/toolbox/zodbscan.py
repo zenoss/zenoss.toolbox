@@ -166,7 +166,11 @@ class PKEReporter(object):
             # Check the actual attributes on the parent
             parent = self._conn[parent_oid]
             for k, v in parent.__dict__.iteritems():
-                if v == child:
+                try:
+                    if v == child:
+                        name = k
+                        break
+                except POSKeyError:
                     name = k
                     break
         return name, pickler.klass
