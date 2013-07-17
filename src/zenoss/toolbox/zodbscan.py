@@ -37,11 +37,20 @@ class Analyzer(UnpicklerBase):
         self._marker = object()
         self.klass = None
 
-    def persistent_load(self, (oid, klass)):
-        if oid == self.problem_oid:
-            self.klass = klass
-            return self._marker
-
+    def persistent_load(self, pickle_id):
+        if isinstance(pickle_id, tuple):
+            oid, klass = pickle_id
+            if oid == self.problem_oid:
+                self.klass = klass
+                return self._marker
+        else:
+            pass
+            #try:
+            #    oid_u64, oid_0x, oid_rep = PKEReporter.oid_versions(pickle_id)
+            #    print "### WARNING: pickle_id is not tuple - oid:", oid_0x, oid_rep, oid_u64
+            #except Exception:
+            #    # what the heck is pickle_id?
+            #    print "### ERROR: pickle_id not tuple:", repr(pickle_id)
 
 def get_refs(p):
     """
@@ -165,14 +174,16 @@ class PKEReporter(object):
         if not name:
             # Check the actual attributes on the parent
             parent = self._conn[parent_oid]
-            for k, v in parent.__dict__.iteritems():
-                try:
-                    if v == child:
-                        name = k
-                        break
-                except POSKeyError:
-                    name = k
-                    break
+            try:
+                for k, v in parent.__dict__.iteritems():
+                    try:
+                        if v == child:
+                            name = k
+                            break
+                    except Exception:
+                        pass
+            except AttributeError:  # catch these errors -  AttributeError: 'BTrees.OIBTree.OIBTree' object has no attribute '__dict__'
+                pass
         return name, pickler.klass
 
     @staticmethod
@@ -196,6 +207,7 @@ class PKEReporter(object):
                 name, klass = self.analyze(a, b)
                 path.append(name)
             parent_klass = klass
+        path = filter(None, path)
         name, klass = self.analyze(*ancestors[-2:])
         sys.stderr.write(' '*80)
         sys.stderr.flush()
