@@ -14,6 +14,7 @@ from ZODB.POSException import POSKeyError
 from ZODB.DB import DB
 from ZODB.utils import u64
 
+from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
 from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
 
 
@@ -257,7 +258,8 @@ Refers to a missing object:
         print "="*50
 
         oid = '\x00\x00\x00\x00\x00\x00\x00\x01'
-        reported, scanned, total = self.verify(oid)
+        with gc_cache_every(1000):
+            reported, scanned, total = self.verify(oid)
 
         sys.stderr.write(' '*80)
         sys.stderr.flush()
