@@ -126,7 +126,8 @@ class PKEReporter(object):
         self._dbname = db
         self._config = get_config(db)
         self._storage = self._config.storages[0].open()
-        self._conn = DB(self._storage).open()
+        self._db = DB(self._storage)
+        self._conn = self._db.open()
         self._app = self._conn.root()
         self._size = self.get_total_count()
 
@@ -258,7 +259,7 @@ Refers to a missing object:
         print "="*50
 
         oid = '\x00\x00\x00\x00\x00\x00\x00\x01'
-        with gc_cache_every(1000):
+        with gc_cache_every(1000, self._db):
             reported, scanned, total = self.verify(oid)
 
         sys.stderr.write(' '*80)
