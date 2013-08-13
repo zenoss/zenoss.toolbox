@@ -15,7 +15,7 @@ def cleanZodb(dmd):
         try:
             obj = brain.getObject()
         except Exception:
-            log.warn("Found unbrainable path, deleting: %s", brain.getPath())
+            log.warn("Found unresolvable path, deleting: %s", brain.getPath())
             uncat(brain.getPath())
 
     log.info("Finished scanning catalog")
