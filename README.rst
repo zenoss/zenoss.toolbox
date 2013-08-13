@@ -2,6 +2,13 @@ zenoss.toolbox
 ==============
 Utilities for analyzing and debugging Zenoss environments.
 
+
+cleancatalog
+------------
+``cleancatalog`` will scan the global catalog and remove entries that
+point to unresolvable paths. It is safe to run in the background.
+
+
 zodbscan
 --------
 ``zodbscan`` will scan the zodb and zodb_session databases, looking for

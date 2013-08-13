@@ -1,6 +1,7 @@
 import logging
 
 import Globals
+from ZODB.transact import transact
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 
 log = logging.getLogger("cleancatalog")
@@ -8,12 +9,14 @@ log = logging.getLogger("cleancatalog")
 def cleanZodb(dmd):
     global_catalog = dmd.zport.global_catalog
 
+    uncat = transact(global_catalog.uncatalog_object)
+
     for brain in global_catalog():
         try:
             obj = brain.getObject()
         except Exception:
             log.warn("Found unbrainable path, deleting: %s", brain.getPath())
-            global_catalog.uncatalog_object(brain.getPath())
+            uncat(brain.getPath())
 
     log.info("Finished scanning catalog")
     
