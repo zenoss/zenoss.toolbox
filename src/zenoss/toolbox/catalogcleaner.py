@@ -10,7 +10,7 @@ def cleanZodb(dmd):
 
     for brain in global_catalog():
         try:
-            brain.getObject()
+            obj = brain.getObject()
         except Exception:
             log.warn("Found unbrainable path, deleting: %s", brain.getPath())
             global_catalog.uncatalog_object(brain.getPath())
