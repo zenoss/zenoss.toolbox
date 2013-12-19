@@ -195,6 +195,14 @@ def findPOSKeyErrors(topnode):
             try:
                 rel = node._getOb(name)
                 rel()
+            except SystemError:
+                # to troubleshoot traceback in:
+                #   https://dev.zenoss.com/tracint/pastebin/4769
+                # ./findposkeyerror --fixrels /zport/dmd/
+                #   SystemError: new style getargs format but argument is not a tuple
+                print "%s: %s on %s '%s' of %s" \
+                    % (type(e).__name__, e, "relationship", name, path)
+                raise
             except _RELEVENT_EXCEPTIONS as e:
                 #import pdb
                 #pdb.set_trace()
