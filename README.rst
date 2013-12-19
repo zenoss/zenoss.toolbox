@@ -3,6 +3,13 @@ zenoss.toolbox
 Utilities for analyzing and debugging Zenoss environments.
 
 
+findposkeyerror
+------------
+``findposkeyerror`` will scan the supplied zodb path, looking for
+dangling references for certain objects and fix those if --fixrels
+is supplied as a command argument.
+
+
 cleancatalog
 ------------
 ``cleancatalog`` will scan the global catalog and remove entries that

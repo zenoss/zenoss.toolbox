@@ -1,6 +1,13 @@
 Changelog
 =========
 
+
+0.1.6
+--------------------
+
+* Added findposkeyerror, which finds/fixes relationships having POSKeyErrors
+
+
 0.1.5
 --------------------
 
