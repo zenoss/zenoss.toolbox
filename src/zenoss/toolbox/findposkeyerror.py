@@ -69,7 +69,11 @@ class RelFixer(Fixer):
 
 
 class SearchManagerFixer(Fixer):
-    # POSKeyError: 0x0683923b on attribute 'SearchManager' of app.zport.dmd.ZenUsers.svs
+    """
+    SearchManagerFixer fixes SearchManager POSKeyErrors like:
+        POSKeyError: 0x0683923b on attribute 'SearchManager' of app.zport.dmd.ZenUsers.svs
+    """
+
     # >>> dmd.ZenUsers.svs.SearchManager.__class__
     # <class 'ZenPacks.zenoss.AdvancedSearch.SearchManager.SearchManager'>
     # >>> find('svs')
@@ -108,7 +112,11 @@ class SearchManagerFixer(Fixer):
 
 
 class ComponentSearchFixer(Fixer):
-    # POSKeyError: 0x070039e0 on attribute 'componentSearch' of app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
+    """
+    ComponentSearchFixer fixes ComponentSearch POSKeyErrors like:
+        POSKeyError: 0x070039e0 on attribute 'componentSearch' of app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
+    """
+
     # >>> dmd.Devices.Network.Juniper.mx.mx_240.devices._getOb('edge1.fra')
     # <Device at /zport/dmd/Devices/Network/Juniper/mx/mx_240/devices/edge1.fra>
     # >>> d=_
