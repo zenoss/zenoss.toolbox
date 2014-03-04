@@ -1,21 +1,18 @@
 Changelog
 =========
 
+0.1.7
+--------------------
+* Added zencatalogscan - replaces cleancatalog and support's fixCatalogs.py
 
 0.1.6
 --------------------
-
 * Added findposkeyerror, which finds/fixes relationships having POSKeyErrors
-
 
 0.1.5
 --------------------
-
 * Added cleancatalog, which cleans stale objects from the catalog
-
 
 0.1
 --------------------
-
-* Added zodbscan, which detects and reports on POSKeyErrors.
-
+* Added zodbscan, which detects and reports on POSKeyErrors
