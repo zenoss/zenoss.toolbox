@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.1.8
+--------------------
+* Fixed ZEN-10555, impacting zencatalogscan not fixing with --fix option
+
 0.1.7
 --------------------
 * Added zencatalogscan - replaces cleancatalog and support's fixCatalogs.py
