@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 #####################
 
-scriptVersion = "1.0.0"
+scriptVersion = "1.0.1"
 
 import Globals
 import argparse
 import sys
+import traceback
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from ZODB.transact import transact
 
@@ -40,7 +41,7 @@ def scan_catalog(catalog, fix):
             except Exception:
                 objectsWithIssues.append(brain.getPath())
                 if fix:
-                    transact(catalog.uncatalog_object(brain.getPath()))
+                    transact(catalog.uncatalog_object)(brain.getPath())
 
         # Finish off the execution progress bar since we're finished
         sys.stdout.write('\r')
@@ -95,10 +96,15 @@ def main():
     if cmdLineOptions['fix']:
         print ""
         print "Reindexing dmd Objects..."
-        dmd.Devices.reIndex()
-        dmd.Events.reIndex()
-        dmd.Manufacturers.reIndex()
-        dmd.Networks.reIndex()
+        try:
+            dmd.Devices.reIndex()
+            dmd.Events.reIndex()
+            dmd.Manufacturers.reIndex()
+            dmd.Networks.reIndex()
+        except Exception, e:
+            summaryMsg.append("")
+            summaryMsg.append(" ** Exception encountered when reindexing dmd object %s"
+                              % (e))
 
     print ""
     print "EXECUTION SUMMARY:"
