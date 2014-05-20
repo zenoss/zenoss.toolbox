@@ -263,7 +263,7 @@ def getOID(ex):
     return "0x%08x" % int(str(ex), 16)
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Find POSKeyErrors 1.4")
     parser.add_argument(
         "folder", metavar="PATH", type=str,
@@ -304,3 +304,7 @@ if __name__ == "__main__":
             if args.fixrels:
                 if isinstance(ex, POSKeyError):
                     fixPOSKeyError(exname, ex, objType, objId, parentPath)
+
+
+if __name__ == "__main__":
+    main()
