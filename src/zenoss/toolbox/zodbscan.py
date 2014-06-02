@@ -234,8 +234,9 @@ Refers to a missing object:
         path = ()
         stack = deque([(root, path)])
         reported = 0
-        while stack:
-            oid, path = stack.popleft()
+        curstack, stack = stack, deque([])
+        while curstack or stack:
+            oid, path = curstack.pop()
             seen_add(oid)
             if not len(seen) % 1000:
                 self.update_progress(len(seen), self._size)
@@ -247,6 +248,11 @@ Refers to a missing object:
             else:
                 refs = get_refs(state)
                 stack.extend((o, path + (o,)) for o in set(refs) - seen)
+            if not curstack:
+                curstack = stack
+                stack=None
+                stack=deque([])
+                #curstack, stack = stack, deque([])
         return reported, len(seen), self._size
 
 

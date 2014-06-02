@@ -1,6 +1,16 @@
 Changelog
 =========
 
+0.1.9
+--------------------
+* Fixed ZEN-10556: findposkeyerror has broken easy install entry script
+* Fixed ZEN-11700: zodbscan in zenoss.toolbox is downlevel (missing memory optimization) 
+* Fixed ZEN-11679: zencatalogscan needs an option to only scan a certain catalog
+* Fixed ZEN-10793: zencatalogscan reindex can fail for dmd.Devices.reIndex()
+* Fixed ZEN-10579: zencatalogscan doesn't reindex component catalogs
+* Fixed ZEN-10580: zencatalogscan must print full exceptions and log output to file
+* Fixed ZEN-10567: zencatalogscan should cycle until it fixes all issues 
+
 0.1.8
 --------------------
 * Fixed ZEN-10555, impacting zencatalogscan not fixing with --fix option
