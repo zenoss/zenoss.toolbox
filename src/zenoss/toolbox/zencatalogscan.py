@@ -18,7 +18,7 @@ from ZODB.transact import transact
 from zope.event import notify
 
 executionStart = time.time()
-log_file_name = '%s/log/zencatalogscan.log' % (os.getenv("ZENHOME"))
+log_file_name = os.path.join(os.getenv("ZENHOME"), 'log/zencatalogscan.log')
 logging.basicConfig(filename='%s' % (log_file_name),
                     filemode='a',
                     format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
