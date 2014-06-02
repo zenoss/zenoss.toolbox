@@ -99,6 +99,7 @@ def scan_catalog(catalogName, catalog, fix, maxCycles):
                 localIssueFound = True
                 log.error("Catalog %s contains broken object %s" % (catalogName, brain.getPath()))
                 if fix:
+                    log.info("Attempting to uncatalog %s" % (brain.getPath()))
                     transact(catalog.uncatalog_object)(brain.getPath())
 
         numberOfIssues = len(objectsWithIssues)
