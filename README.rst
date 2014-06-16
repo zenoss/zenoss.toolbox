@@ -2,7 +2,7 @@ zenoss.toolbox
 ==============
 Utilities for analyzing and debugging Zenoss environments.  
 
-*How do I Install and Use the zenoss.toolbox Package?_*
+*How do I Install and Use the zenoss.toolbox Package?*
  * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=201
 
 Tools Included
