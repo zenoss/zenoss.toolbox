@@ -1,23 +1,26 @@
 #!/usr/bin/env python
 #####################
 
-scriptVersion = "1.0.2"
+scriptVersion = "1.0.3"
 
 import Globals
 import argparse
 import sys
-import traceback
-import time
-import logging
 import os
+import traceback
+import logging
+import socket
+import time
 import datetime
+import transaction
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
-from Products.CMFCore.utils import getToolByName
 from Products.Zuul.catalog.events import IndexingEvent
 from ZODB.transact import transact
 from zope.event import notify
+from time import localtime, strftime
 
-executionStart = time.time()
+execution_start = time.time()
+any_issue_detected = False
 log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'zencatalogscan.log')
 logging.basicConfig(filename='%s' % (log_file_name),
                     filemode='a',
@@ -25,126 +28,107 @@ logging.basicConfig(filename='%s' % (log_file_name),
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO)
 log = logging.getLogger("zen.zencatalogscan")
-print "Initializing zencatalogscan..."
-log.info("Initializing")
+print("\n[%s] Initializing zencatalogscan (detailed log at %s)\n" %
+      (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
+log.info("Initializing zencatalogscan")
 dmd = ZenScriptBase(noopts=True, connect=True).dmd
-summaryMsg = []
-issueDetected = False
+log.info("Obtained ZenScriptBase connection")
 
 
-def scan_catalog(catalogName, catalog, fix, maxCycles):
+def get_lock(process_name):
+    global lock_socket
+    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        lock_socket.bind('\0' + process_name)
+        log.info("'zenoss.toolbox' lock acquired - continuing")
+    except socket.error:
+        print("[%s] Unable to acquire zenoss.toolbox socket lock - are other tools already running?\n" %
+              (strftime("%Y-%m-%d %H:%M:%S", localtime())))
+        log.error("'zenoss.tooblox' lock already exists - unable to acquire - exiting")
+        return False
+    return True
+
+
+def progress_bar(message):
+    sys.stdout.write("%s" % (message))
+    sys.stdout.flush()
+
+
+def scan_catalog(catalog_name, catalog_list, fix, max_cycles):
     """Scan through a catalog looking for broken references"""
 
-    try:
-        brains = catalog()
-    except AttributeError:
-        print "{} not found.  skipping....".format(catalog)
-    except Exception:
-        raise
+    catalog = catalog_list[0]
+    initial_catalog_size = catalog_list[1]
 
-    sizeOfCatalog = len(brains)
-    print "Examining %s [%s objects]:" % (catalogName, str(sizeOfCatalog))
-    log.info("Examining %s catalog with %d objects" % (catalogName, sizeOfCatalog))
+    print("[%s] Examining  %7d  '%s' Objects:" %
+          (strftime("%Y-%m-%d %H:%M:%S", localtime()), initial_catalog_size, catalog_name))
+    log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
 
-    global issueDetected
-    currentCycle = 0
-    numberOfIssues = -1
-    highestIssues = 0
-    lowestIssues = -1
+    global any_issue_detected
+    current_cycle = 0
+    number_of_issues = -1
     if not fix:
-        maxCycles = 1
+        max_cycles = 1
 
-    localIssueFound = False
-
-    while ((currentCycle < maxCycles) and (numberOfIssues != 0)):
-    ## Begin while loop
-
+    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
         try:
             brains = catalog()
-        except AttributeError:
-            print "{} not found.  skipping....".format(catalog)
         except Exception:
             raise
 
-        sizeOfCatalog = len(brains)
+        catalog_size = len(brains)
+        current_cycle += 1
+        scanned_count = 0
+        progress_bar_chunk_size = 1
+        number_of_issues = 0
 
-        currentCycle += 1
-        scannedCount = 0
-        progressBarChunkSize = 1
-        objectsWithIssues = []
+        if (catalog_size > 50):
+            progress_bar_chunk_size = (catalog_size//50) + 1
 
-        if (sizeOfCatalog > 50):
-            progressBarChunkSize = (sizeOfCatalog//50) + 1
+        # ZEN-12165: show progress bar immediately before 'for' time overhead
+        progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*0, 0))
 
         for brain in brains:
-            if (scannedCount % progressBarChunkSize) == 0:
-                chunkNumber = scannedCount // progressBarChunkSize
-                if len(objectsWithIssues) > 0:
+            if (scanned_count % progress_bar_chunk_size) == 0:
+                chunk_number = scanned_count // progress_bar_chunk_size
+                if number_of_issues > 0:
                     if fix:
-                        sys.stdout.write("\r  Cleaning  [%-50s] %3.0d%% [%d Issues Detected]" %
-                                         ('='*chunkNumber, 2*chunkNumber, len(objectsWithIssues)))
+                        progress_bar("\r  Cleaning  [%-50s] %3d%% [%d Issues Detected]" %
+                                     ('='*chunk_number, 2*chunk_number, number_of_issues))
                     else:
-                        sys.stdout.write("\r  Scanning  [%-50s] %3.0d%% [%d Issues Detected]" %
-                                         ('='*chunkNumber, 2*chunkNumber, len(objectsWithIssues)))
+                        progress_bar("\r  Scanning  [%-50s] %3d%% [%d Issues Detected]" %
+                                     ('='*chunk_number, 2*chunk_number, number_of_issues))
                 else:
-                    sys.stdout.write("\r  Scanning  [%-50s] %3.0d%% " %
-                                     ('='*chunkNumber, 2*chunkNumber))
-                sys.stdout.flush()
-            scannedCount += 1
+                    progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
+
+            scanned_count += 1
+
             try:
-                testReference = brain.getObject()
+                test_reference = brain.getObject()
+                test_reference._p_deactivate()
             except Exception:
-                objectsWithIssues.append(brain.getPath())
-                issueDetected = True
-                localIssueFound = True
-                log.error("Catalog %s contains broken object %s" % (catalogName, brain.getPath()))
+                number_of_issues += 1
+                any_issue_detected = True
+                log.error("Catalog %s contains broken object %s" % (catalog_name, brain.getPath()))
                 if fix:
                     log.info("Attempting to uncatalog %s" % (brain.getPath()))
                     transact(catalog.uncatalog_object)(brain.getPath())
 
-        numberOfIssues = len(objectsWithIssues)
-
-        # Finish off the execution progress bar since we're finished
-        if len(objectsWithIssues) > 0:
+        # Finish off the execution progress bar since we're complete with this pass
+        if number_of_issues > 0:
             if fix:
-                sys.stdout.write("\r  Clean #%2.0d [%-50s] %3.0d%% [%d Issues Detected]" %
-                                 (currentCycle, '='*50, 100, len(objectsWithIssues)))
+                progress_bar("\r  Clean #%2.0d [%-50s] %3.0d%% [%d Issues Detected]\n" %
+                             (current_cycle, '='*50, 100, number_of_issues))
             else:
-                sys.stdout.write("\r  WARNING   [%-50s] %3.0d%% [%d Issues Detected]" %
-                                 ('='*50, 100, len(objectsWithIssues)))
+                progress_bar("\r  WARNING   [%-50s] %3.0d%% [%d Issues Detected]\n" %
+                             ('='*50, 100, number_of_issues))
         else:
-            sys.stdout.write("\r  Verified  [%-50s] %3.0d%% " % ('='*50, 100))
-        sys.stdout.flush()
-        print ""
+            progress_bar("\r  Verified  [%-50s] %3.0d%%\n" % ('='*50, 100))
 
-        # Append appropriate summaryMsg for this cycle 
-        if not fix:
-            if len(objectsWithIssues) > 0:
-                summaryMsg.append("** WARNING ** %s catalog had %d issues" %
-                                  (catalogName, len(objectsWithIssues)))
-            else:
-                summaryMsg.append("Verified %s catalog (no issues detected)" %
-                                  (catalogName))
-        else:
-            if len(objectsWithIssues) > 0:
-                if currentCycle == 1:
-                    summaryMsg.append("Repairing %s catalog (issues were detected)" %
-                                      (catalogName))
-                summaryMsg.append("  Pass %d - Attempted repair for %s issues in %s catalog" %
-                                  (currentCycle, len(objectsWithIssues), catalogName))
-            else:
-                if localIssueFound:
-                    summaryMsg.append("  Verified %s catalog (no issues detected)" %
-                                      (catalogName))
-                else:
-                    summaryMsg.append("Verified %s catalog (no issues detected)" %
-                                      (catalogName))
-
-    ## End While Loop
+    transaction.abort()
 
 
-def altReindex_Devices():
-# ZEN-10793: alternative for dmd.Devices.reIndex() that could fail on some systems
+def alt_reindex_devices(): 	# ZEN-10793: alternative for dmd.Devices.reIndex()
     for dev in dmd.Devices.getSubDevicesGen_recursive():
         notify(IndexingEvent(dev))
         dev.index_object(noips=True)
@@ -153,62 +137,103 @@ def altReindex_Devices():
             comp.index_object()
 
 
-def reindex_DMD():
-    try:    # reindex Devices
-        sys.stdout.write("\rReindexing %s ... " % "Devices".rjust(13))
-        sys.stdout.flush()
-        altReindex_Devices()
+def log_reindex_exception(type, exception):
+    print(" FAILED (check %s)" % (log_file_name))
+    log.error("%s failed to reindex successfully" % (type))
+    log.exception(exception)
+
+
+def reindex_dmd_objects():
+    print("\n[%s] Reindexing dmd objects" % (strftime("%Y-%m-%d %H:%M:%S")))
+    log.info("Reindexing dmd objects")
+    try:
+        progress_bar("\rReindexing %s ... " % "Devices".rjust(13))
+        alt_reindex_devices()
         print("finished")
         log.info("Devices reindexed successfully")
     except Exception, e:
-        print(" FAILED  (check %s)" % (log_file_name))
-        summaryMsg.append("EXCEPTION reindexing Devices (see %s)" % (log_file_name))
-        log.error("Devices failed to reindex successfully")
-        log.exception(e)
-
-    try:    # reindex Events
-        sys.stdout.write("\rReindexing %s ... " % "Events".rjust(13))
-        sys.stdout.flush()
+        log_reindex_exception("Devices", e)
+    try:
+        progress_bar("\rReindexing %s ... " % "Events".rjust(13))
         dmd.Events.reIndex()
         print("finished")
         log.info("Events reindexed successfully")
     except Exception, e:
-        print(" FAILED  (check %s)" % (log_file_name))
-        summaryMsg.append("EXCEPTION reindexing Events (see %s)" % (log_file_name))
-        log.error("Events failed to reindex successfully")
-        log.exception(e)
-
-    try:    # reindex Manufacturers
-        sys.stdout.write("\rReindexing %s ... " % "Manufacturers".rjust(13))
-        sys.stdout.flush()
+        log_reindex_exception("Events", e)
+    try:
+        progress_bar("\rReindexing %s ... " % "Manufacturers".rjust(13))
         dmd.Manufacturers.reIndex()
         print("finished")
         log.info("Manufacturers reindexed successfully")
     except Exception, e:
-        print(" FAILED  (check %s)" % (log_file_name))
-        summaryMsg.append("EXCEPTION reindexing Manufacturers (see %s)" % (log_file_name))
-        log.error("Manufacturers failed to reindex successfully")
-        log.exception(e)
-
-    try:    # reindex Networks
-        sys.stdout.write("\rReindexing %s ... " % "Networks".rjust(13))
-        sys.stdout.flush()
+        log_reindex_exception("Manufacturers", e)
+    try:
+        progress_bar("\rReindexing %s ... " % "Networks".rjust(13))
         dmd.Networks.reIndex()
         print("finished")
         log.info("Networks reindexed successfully")
     except Exception, e:
-        print(" FAILED  (check %s)" % (log_file_name))
-        summaryMsg.append("EXCEPTION reindexing Networks (see %s)" % (log_file_name))
-        log.error("Networks failed to reindex successfully")
-        log.exception(e)
+        log_reindex_exception("Networks", e)
+
+
+def build_catalog_dict():
+    """Builds a list of catalogs present and > 0 objects"""
+
+    catalogs_to_check = {
+        'global_catalog': 'dmd.global_catalog',
+        'Networks.ipSearch': 'dmd.Networks.ipSearch',
+        'IPv6Networks.ipSearch': 'dmd.IPv6Networks.ipSearch',
+        'Devices.deviceSearch': 'dmd.Devices.deviceSearch',
+        'Services.serviceSearch': 'dmd.Services.serviceSearch',
+        'ZenLinkManager.layer2_catalog': 'dmd.ZenLinkManager.layer2_catalog',
+        'ZenLinkManager.layer3_catalog': 'dmd.ZenLinkManager.layer3_catalog',
+        'maintenanceWindowSearch': 'dmd.maintenanceWindowSearch',
+        'zenPackPersistence': 'dmd.zenPackPersistence',
+        'Manufacturers.productSearch': 'dmd.Manufacturers.productSearch',
+        'VMware.vmwareGuestSearch': 'dmd.Devices.VMware.vmwareGuestSearch',
+        'CiscoUCS.ucsSearchCatalog': 'dmd.Devices.CiscoUCS.ucsSearchCatalog',
+        'Storage.wwnCatalog': 'dmd.Devices.Storage.wwnCatalog',
+        'Storage.iqnCatalog': 'dmd.Devices.Storage.iqnCatalog',
+        'vCloud.vCloudVMSearch': 'dmd.Devices.vCloud.vCloudVMSearch',
+        'vSphere.lunCatalog': 'dmd.Devices.vSphere.lunCatalog',
+        'vSphere.vnicCatalog': 'dmd.Devices.vSphere.vnicCatalog',
+        'vSphere.pnicCatalog': 'dmd.Devices.vSphere.pnicCatalog',
+        'CloudStack.HostCatalog': 'dmd.Devices.CloudStack.HostCatalog',
+        'CloudStack.RouterVMCatalog': 'dmd.Devices.CloudStack.RouterVMCatalog',
+        'CloudStack.SystemVMCatalog': 'dmd.Devices.CloudStack.SystemVMCatalog',
+        'CloudStack.VirtualMachineCatalog': 'dmd.Devices.CloudStack.VirtualMachineCatalog',
+        'XenServer.XenServerCatalog': 'dmd.Devices.XenServer.XenServerCatalog',
+        'XenServer.PIFCatalog': 'dmd.Devices.XenServer.PIFCatalog',
+        'XenServer.VIFCatalog': 'dmd.Devices.XenServer.VIFCatalog'
+        }
+
+    intermediate_catalog_dict = {}
+
+    for catalog in catalogs_to_check.keys():
+        log.info("Checking existence of the %s catalog" % (catalog))
+        try:
+            temp_brains = eval(catalogs_to_check[catalog])
+            if len(temp_brains) > 0:
+                intermediate_catalog_dict[catalog] = [eval(catalogs_to_check[catalog]), len(temp_brains)]
+            else:
+                log.info("Catalog %s exists but has no items -- skipping" % (catalog))
+        except AttributeError:
+            log.error("Catalog %s not found - skipping" % (catalog))
+        except Exception, e:
+            log.exception(e)
+
+    transaction.abort()
+    return intermediate_catalog_dict
 
 
 def parse_options():
-    """Defines and parses command-line options for script """
+    """Defines command-line options for script """
+
     parser = argparse.ArgumentParser(version=scriptVersion,
                                      description="Scans catalogs for references to missing objects. \
                                          Before using zencatalogscan you must first confirm both \
                                          zodbscan & findposkeyerrors return clean.")
+
     parser.add_argument("-l", "--list", action="store_true", default=False,
                         help="list all catalogs supported for scan")
     parser.add_argument("-f", "--fix", action="store_true", default=False,
@@ -221,62 +246,50 @@ def parse_options():
 
 
 def main():
-    """Scans catalogs, if fix: fixes and reindexes, and prints a final summary"""
-    cmdLineOptions = parse_options()
-    catalogDict = {
-        'global_catalog': dmd.global_catalog,
-        'IPv4.ipSearch': dmd.Networks.ipSearch,
-        'IPv6.ipSearch': dmd.IPv6Networks.ipSearch,
-        'deviceSearch': dmd.Devices.deviceSearch,
-        'serviceSearch': dmd.Services.serviceSearch,
-        'layer2_catalog': dmd.ZenLinkManager.layer2_catalog,
-        'layer3_catalog': dmd.ZenLinkManager.layer3_catalog,
-        'maintenanceWindowSearch': dmd.maintenanceWindowSearch,
-        'zenPackPersistence': dmd.zenPackPersistence,
-        'productSearch': dmd.Manufacturers.productSearch
-        }
+    """Parses options, defines catalogs, scans catalogs, reindexes (if fix)"""
 
-    if cmdLineOptions['list']:
-        print "List of available Zenoss catalogs to scan:"
-        print ""
-        for i in catalogDict.keys():
+    # Attempt to get the zenoss-toolbox lock before any actions performed
+    if not get_lock("zenoss-toolbox"):
+        sys.exit(1)
+
+    global any_issue_detected
+    cli_options = parse_options()
+    catalog_dict = build_catalog_dict()
+
+    if cli_options['list']:
+        print "List of support Zenoss catalogs to examine:\n"
+        for i in catalog_dict.keys():
             print i
         print ""
-        log.info("List of supported catalogs output to stdout - script finished")
+        log.info("zencatalogscan finished - list of supported catalogs output to CLI")
         return
 
-    if cmdLineOptions['catalog']:
-        if cmdLineOptions['catalog'] in catalogDict.keys():
-            print("Processing Specific Catalog...")
-            scan_catalog(cmdLineOptions['catalog'], catalogDict[cmdLineOptions['catalog']],
-                         cmdLineOptions['fix'], cmdLineOptions['N'])
+    if cli_options['catalog']:
+        if cli_options['catalog'] in catalog_dict.keys():
+            scan_catalog(cli_options['catalog'], catalog_dict[cli_options['catalog']],
+                         cli_options['fix'], cli_options['N'])
         else:
             print("Catalog '%s' unrecognized; run 'zencatalogscan -l' for supported catalogs" %
-                  (cmdLineOptions['catalog']))
-            log.error("Catalog '%s' unrecognized" % (cmdLineOptions['catalog']))
+                  (cli_options['catalog']))
+            log.error("CLI input '%s' doesn't match any recognized catalogs" % (cli_options['catalog']))
             return
     else:
-        print("Processing Catalogs...\n")
-        for catalog in catalogDict.keys():
-            scan_catalog(catalog, catalogDict[catalog], cmdLineOptions['fix'], cmdLineOptions['N'])
+        for catalog in catalog_dict.keys():
+            scan_catalog(catalog, catalog_dict[catalog], cli_options['fix'], cli_options['N'])
 
-    if cmdLineOptions['fix']:
-        print "\nReindexing dmd Objects...\n"
-        summaryMsg.append("")
-        log.info("Reindexing dmd objects")
-        reindex_DMD()
+    if cli_options['fix']:
+        reindex_dmd_objects()
 
-    print("\nSummary (completed in %s):\n" %
-          (str(datetime.timedelta(seconds=(int(time.time() - executionStart))))))
-    for item in summaryMsg:
-        print "  %s" % (item)
-    print ""
+    print("\n[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),
+                                                 datetime.timedelta(seconds=int(time.time() - execution_start))))
+    log.info("zencatalogscan completed in %1.2f seconds" % (time.time() - execution_start))
 
-    if issueDetected and not cmdLineOptions['fix']:
-        print("** WARNING ** Issues were detected - Confirm zodbscan and findposkeyerror are clean")
-        print("              and then repair catalogs with 'zencatalogscan -f'")
-
-    log.info("ZenCatalogScan completed in %1.2f seconds" % (time.time() - executionStart))
+    if any_issue_detected and not cli_options['fix']:
+        print("** WARNING ** Issues were detected - Consult KB article #216 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216\n")
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
