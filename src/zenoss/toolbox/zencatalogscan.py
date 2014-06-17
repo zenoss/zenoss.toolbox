@@ -28,7 +28,8 @@ logging.basicConfig(filename='%s' % (log_file_name),
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO)
 log = logging.getLogger("zen.zencatalogscan")
-print "\n[%s] Initializing zencatalogscan (detailed log at %s)\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name)
+print("\n[%s] Initializing zencatalogscan (detailed log at %s)\n" %
+      (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
 log.info("Initializing zencatalogscan")
 dmd = ZenScriptBase(noopts=True, connect=True).dmd
 log.info("Obtained ZenScriptBase connection")
@@ -42,7 +43,7 @@ def get_lock(process_name):
         log.info("'zenoss.toolbox' lock acquired - continuing")
     except socket.error:
         print("[%s] Unable to acquire zenoss.toolbox socket lock - are other tools already running?\n" %
-               (strftime("%Y-%m-%d %H:%M:%S", localtime())))
+              (strftime("%Y-%m-%d %H:%M:%S", localtime())))
         log.error("'zenoss.tooblox' lock already exists - unable to acquire - exiting")
         return False
     return True
@@ -57,57 +58,56 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles):
     """Scan through a catalog looking for broken references"""
 
     catalog = catalog_list[0]
-    initial_catalog_size = catalog_list[1] 
+    initial_catalog_size = catalog_list[1]
 
     print("[%s] Examining  %7d  '%s' Objects:" %
-           (strftime("%Y-%m-%d %H:%M:%S", localtime()), initial_catalog_size, catalog_name))
+          (strftime("%Y-%m-%d %H:%M:%S", localtime()), initial_catalog_size, catalog_name))
     log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
 
     global any_issue_detected
-    currentCycle = 0
-    numberOfIssues = -1
+    current_cycle = 0
+    number_of_issues = -1
     if not fix:
         max_cycles = 1
 
-    while ((currentCycle < max_cycles) and (numberOfIssues != 0)):
-    ## Begin while loop
-
+    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
         try:
             brains = catalog()
         except Exception:
             raise
 
-        currentCycle += 1
-        scannedCount = 0
-        progressBarChunkSize = 1
-        numberOfIssues = 0
+        catalog_size = len(brains)
+        current_cycle += 1
+        scanned_count = 0
+        progress_bar_chunk_size = 1
+        number_of_issues = 0
 
-        if (len(brains) > 50):
-            progressBarChunkSize = (len(brains)//50) + 1
+        if (catalog_size > 50):
+            progress_bar_chunk_size = (catalog_size//50) + 1
 
         # ZEN-12165: show progress bar immediately before 'for' time overhead
         progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*0, 0))
 
         for brain in brains:
-            if (scannedCount % progressBarChunkSize) == 0:
-                chunkNumber = scannedCount // progressBarChunkSize
-                if numberOfIssues > 0:
+            if (scanned_count % progress_bar_chunk_size) == 0:
+                chunk_number = scanned_count // progress_bar_chunk_size
+                if number_of_issues > 0:
                     if fix:
                         progress_bar("\r  Cleaning  [%-50s] %3d%% [%d Issues Detected]" %
-                                      ('='*chunkNumber, 2*chunkNumber, numberOfIssues))
+                                     ('='*chunk_number, 2*chunk_number, number_of_issues))
                     else:
                         progress_bar("\r  Scanning  [%-50s] %3d%% [%d Issues Detected]" %
-                                      ('='*chunkNumber, 2*chunkNumber, numberOfIssues))
+                                     ('='*chunk_number, 2*chunk_number, number_of_issues))
                 else:
-                    progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*chunkNumber, 2*chunkNumber))
+                    progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
 
-            scannedCount += 1
+            scanned_count += 1
 
             try:
-                testReference = brain.getObject()
-                testReference._p_deactivate()
+                test_reference = brain.getObject()
+                test_reference._p_deactivate()
             except Exception:
-                numberOfIssues += 1
+                number_of_issues += 1
                 any_issue_detected = True
                 log.error("Catalog %s contains broken object %s" % (catalog_name, brain.getPath()))
                 if fix:
@@ -115,15 +115,16 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles):
                     transact(catalog.uncatalog_object)(brain.getPath())
 
         # Finish off the execution progress bar since we're complete with this pass
-        if numberOfIssues > 0:
+        if number_of_issues > 0:
             if fix:
-	        progress_bar("\r  Clean #%2.0d [%-50s] %3.0d%% [%d Issues Detected]\n" % (currentCycle, '='*50, 100, numberOfIssues))
+                progress_bar("\r  Clean #%2.0d [%-50s] %3.0d%% [%d Issues Detected]\n" %
+                             (current_cycle, '='*50, 100, number_of_issues))
             else:
-	        progress_bar("\r  WARNING   [%-50s] %3.0d%% [%d Issues Detected]\n" % ('='*50, 100, numberOfIssues))
+                progress_bar("\r  WARNING   [%-50s] %3.0d%% [%d Issues Detected]\n" %
+                             ('='*50, 100, number_of_issues))
         else:
-	    progress_bar("\r  Verified  [%-50s] %3.0d%%\n" % ('='*50, 100))
+            progress_bar("\r  Verified  [%-50s] %3.0d%%\n" % ('='*50, 100))
 
-    ## End While Loop
     transaction.abort()
 
 
@@ -284,7 +285,8 @@ def main():
     log.info("zencatalogscan completed in %1.2f seconds" % (time.time() - execution_start))
 
     if any_issue_detected and not cli_options['fix']:
-        print("** WARNING ** Issues were detected - Consult KB article at <TBD> for futher steps")
+        print("** WARNING ** Issues were detected - Consult KB article #216 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216\n")
         sys.exit(1)
     else:
         sys.exit(0)
