@@ -21,7 +21,10 @@ from time import localtime, strftime
 
 execution_start = time.time()
 any_issue_detected = False
-log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'zencatalogscan.log')
+log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
+if not os.path.exists(log_file_path):
+    os.makedirs(log_file_path)
+log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox', 'zencatalogscan.log')
 logging.basicConfig(filename='%s' % (log_file_name),
                     filemode='a',
                     format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
