@@ -1,27 +1,78 @@
-#!/usr/bin/env python
+#!/opt/zenoss/bin/python
+########################
+
+scriptVersion = "0.9.0"
+
+import Globals
+import argparse
 import sys
+import os
+import traceback
 import logging
+import socket
+import time
+import datetime
+import transaction
 import cStringIO
 import tempfile
 import cPickle
+import ZConfig
+
 from pickle import Unpickler as UnpicklerBase
 from collections import deque
-
-import Globals
-import ZConfig
+from time import localtime, strftime
 from relstorage.zodbpack import schema_xml
+from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
+from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
+from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
+from Products.ZenRelations.RelationshipBase import RelationshipBase
+from ZODB.transact import transact
 from ZODB.POSException import POSKeyError
 from ZODB.DB import DB
 from ZODB.utils import u64
 
-from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
-from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
 
+execution_start = time.time()
+any_issue_detected = False
+log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
+if not os.path.exists(log_file_path):
+    os.makedirs(log_file_path)
+log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox', 'zodbscan.log')
+logging.basicConfig(filename='%s' % (log_file_name),
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+log = logging.getLogger("zen.zodbscan")
+print("\n[%s] Initializing zodbscan (detailed log at %s)\n" %
+      (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
+log.setLevel(logging.INFO)
+log.info("Initializing zodbscan")
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("pkereport")
+#logging.basicConfig(level=logging.INFO)
+#log = logging.getLogger("pkereport")
 
 logging.getLogger('relstorage').setLevel(logging.CRITICAL)
+
+
+def get_lock(process_name):
+    global lock_socket
+    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        lock_socket.bind('\0' + process_name)
+        log.info("'zenoss.toolbox' lock acquired - continuing")
+    except socket.error:
+        print("[%s] Unable to acquire zenoss.toolbox socket lock - are other tools already running?\n" %
+              (strftime("%Y-%m-%d %H:%M:%S", localtime())))
+        log.error("'zenoss.tooblox' lock already exists - unable to acquire - exiting")
+        return False
+    return True
+
+
+def progress_bar(message):
+    sys.stdout.write("%s" % (message))
+    sys.stdout.flush()
 
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
@@ -81,8 +132,7 @@ def get_config(database=None):
         conf['mysqldb'] = conf.get('mysqldb', conf.get('zodb-db'))
         conf['zodb-db'] = conf.get('zodb-db', conf.get('mysqldb'))
 
-    zodb_socket = conf.get('mysqlsocket',
-                                   conf.get('zodb-socket'))
+    zodb_socket = conf.get('mysqlsocket', conf.get('zodb-socket'))
 
     if zodb_socket:
         conf['socket'] = 'unix_socket %s' % zodb_socket
@@ -215,7 +265,20 @@ class PKEReporter(object):
         sys.stderr.flush()
         par_u64, par_0x, par_rep = self.oid_versions(parent_oid)
         oid_u64, oid_0x, oid_rep = self.oid_versions(oid)
-        print """
+#        print """
+#FOUND DANGLING REFERENCE
+#PATH {path}
+#TYPE {type}
+#OID {par_0x} {par_rep} {par_u64}
+#Refers to a missing object:
+#    NAME {name}
+#    TYPE {klass}
+#    OID", {oid_0x} {oid_rep} {oid_u64}
+#""".format(path='/'.join(path), type=parent_klass, name=name, klass=klass,
+#          par_u64=par_u64, par_0x=par_0x, par_rep=par_rep,
+#          oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep)
+
+        log.info("""
 FOUND DANGLING REFERENCE
 PATH {path}
 TYPE {type}
@@ -226,67 +289,125 @@ Refers to a missing object:
     OID", {oid_0x} {oid_rep} {oid_u64}
 """.format(path='/'.join(path), type=parent_klass, name=name, klass=klass,
           par_u64=par_u64, par_0x=par_0x, par_rep=par_rep,
-          oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep)
+          oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep))
 
     def verify(self, root):
+        global any_issue_detected
+
+        database_size = self._size
+        scanned_count = 0
+        progress_bar_chunk_size = 1
+        number_of_issues = 0
+
+        if (database_size > 50):
+            progress_bar_chunk_size = (database_size//50) + 1
+
+        progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*0, 0))
+
         seen = set()
-        seen_add = seen.add
+        issues = set()
         path = ()
         stack = deque([(root, path)])
-        reported = 0
         curstack, stack = stack, deque([])
         while curstack or stack:
             oid, path = curstack.pop()
-            seen_add(oid)
-            if not len(seen) % 1000:
-                self.update_progress(len(seen), self._size)
-            try:
-                state = self._storage.load(oid)[0]
-            except POSKeyError:
-                self.report(oid, path)
-                reported += 1
-            else:
-                refs = get_refs(state)
-                stack.extend((o, path + (o,)) for o in set(refs) - seen)
+            #seen.add(oid)
+            scanned_count = len(seen)
+
+             if (scanned_count % progress_bar_chunk_size) == 0:
+                chunk_number = scanned_count // progress_bar_chunk_size
+                if number_of_issues > 0:
+                    progress_bar("\r  Scanning  [%-50s] %3d%% [%d Dangling References]" %
+                                 ('='*chunk_number, 2*chunk_number, number_of_issues))
+                else:
+                    progress_bar("\r  WARNING   [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
+
+            if (oid not in seen):
+                try:
+                    state = self._storage.load(oid)[0]
+                    seen.add(oid)
+                except POSKeyError:
+                    self.report(oid, path)
+                    issues.add([oid, path])
+                    any_issue_detected = True
+                    number_of_issues += 1
+                else:
+                    refs = get_refs(state)
+                    stack.extend((o, path + (o,)) for o in set(refs) - seen)
+
             if not curstack:
                 curstack = stack
                 stack=None
                 stack=deque([])
                 #curstack, stack = stack, deque([])
-        return reported, len(seen), self._size
+
+        if number_of_issues > 0:
+            progress_bar("\r  WARNING   [%-50s] %3.0d%% [%d Dangling References]\n" %
+                             ('='*50, 100, number_of_issues))
+        else:
+            progress_bar("\r  Verified  [%-50s] %3.0d%%\n" % ('='*50, 100))
+
+        return number_of_issues, len(seen), self._size
 
 
     def run(self):
-        print
-        print "="*50
-        print
-        print "   DATABASE INTEGRITY SCAN: ", self._dbname
-        print
-        print "="*50
+
+        print("[%s] Examining %8d items in '%s' database:" %
+                  (strftime("%Y-%m-%d %H:%M:%S", localtime()), self._size,  self._dbname))
+        log.info("Examining %d items in %s database" % (self._size, self._dbname))
 
         oid = '\x00\x00\x00\x00\x00\x00\x00\x01'
+
         with gc_cache_every(1000, self._db):
             reported, scanned, total = self.verify(oid)
 
-        sys.stderr.write(' '*80)
-        sys.stderr.flush()
+        if (100.0*scanned/total) < 99.0:
+            print("  * %3.2f%% of %s objects not reachable - run zenossdbpack to reclaim space *\n" %
+                  ((100.0-100.0*scanned/total), self._dbname))
+            log.info("%3.2f%% of %s objects not reachable - run zenossdbpack to reclaim space" %
+                     ((100.0-100.0*scanned/total), self._dbname))
 
-        print
-        print "SUMMARY:"
-        print "Found", reported, "dangling references"
-        print "Scanned", scanned, "out of", total, "reachable objects"
-        if total > scanned:
-            print "(Run zenossdbpack to garbage collect unreachable objects)"
-        print
+
+def parse_options():
+    """Defines command-line options for script """
+    
+    parser = argparse.ArgumentParser(version=scriptVersion,
+                                     description="Scans zodb/zodb_session for dangling references")
+    
+    parser.add_argument("-v10", "--debug", action="store_true", default=False,
+                        help="run in debug mode (increased logging)")
+    return vars(parser.parse_args())
 
 
 def main():
+    """Scans through zodb hierarchy checking objects for dangling references"""
+    """Script should be run against a non-running Zenoss instance for best results"""
+
+    # Attempt to get the zenoss-toolbox lock before any actions performed
+    if not get_lock("zenoss-toolbox"):
+        sys.exit(1)
+
+    global any_issue_detected
+
+    cli_options = parse_options()
+
     for db in ('zodb', 'zodb_session'):
         PKEReporter(db).run()
+
+    print("[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),
+                                                 datetime.timedelta(seconds=int(time.time() - execution_start))))
+    log.info("zodbscan completed in %1.2f seconds" % (time.time() - execution_start))
+        
+    if any_issue_detected and not cli_options['fix']:
+        print("** WARNING ** Issues were detected - Consult KB article #217 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
     main()
 
 
-(lambda:Globals)() # quiet pyflakes
+#(lambda:Globals)() # quiet pyflakes
