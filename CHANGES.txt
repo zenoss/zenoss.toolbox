@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.2.1
+--------------------
+
+
+
 0.2.0
 --------------------
 * Fixed ZEN-12049: zencatalogscan doesn't process additional catalogs
