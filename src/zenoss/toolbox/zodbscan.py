@@ -317,10 +317,10 @@ Refers to a missing object:
             if (scanned_count % progress_bar_chunk_size) == 0:
                 chunk_number = scanned_count // progress_bar_chunk_size
                 if number_of_issues > 0:
-                    progress_bar("\r  Scanning  [%-50s] %3d%% [%d Dangling References]" %
+                    progress_bar("\r  WARNING   [%-50s] %3d%% [%d Dangling References]" %
                                  ('='*chunk_number, 2*chunk_number, number_of_issues))
                 else:
-                    progress_bar("\r  WARNING   [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
+                    progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
 
             if (oid not in seen):
                 try:
