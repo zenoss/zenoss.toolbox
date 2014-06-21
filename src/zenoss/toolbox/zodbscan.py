@@ -314,7 +314,7 @@ Refers to a missing object:
             #seen.add(oid)
             scanned_count = len(seen)
 
-             if (scanned_count % progress_bar_chunk_size) == 0:
+            if (scanned_count % progress_bar_chunk_size) == 0:
                 chunk_number = scanned_count // progress_bar_chunk_size
                 if number_of_issues > 0:
                     progress_bar("\r  Scanning  [%-50s] %3d%% [%d Dangling References]" %
@@ -362,10 +362,11 @@ Refers to a missing object:
             reported, scanned, total = self.verify(oid)
 
         if (100.0*scanned/total) < 99.0:
-            print("  * %3.2f%% of %s objects not reachable - run zenossdbpack to reclaim space *\n" %
+            print("  * %3.2f%% of %s objects not reachable - run zenossdbpack to reclaim space *" %
                   ((100.0-100.0*scanned/total), self._dbname))
             log.info("%3.2f%% of %s objects not reachable - run zenossdbpack to reclaim space" %
                      ((100.0-100.0*scanned/total), self._dbname))
+        print
 
 
 def parse_options():
