@@ -314,7 +314,7 @@ Refers to a missing object:
             #seen.add(oid)
             scanned_count = len(seen)
 
-             if (scanned_count % progress_bar_chunk_size) == 0:
+            if (scanned_count % progress_bar_chunk_size) == 0:
                 chunk_number = scanned_count // progress_bar_chunk_size
                 if number_of_issues > 0:
                     progress_bar("\r  Scanning  [%-50s] %3d%% [%d Dangling References]" %
