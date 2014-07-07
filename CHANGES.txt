@@ -3,8 +3,14 @@ Changelog
 
 0.2.1
 --------------------
-
-
+ * Fixed ZEN-12671: zencatalogscan should locate log in $ZENHOME/log/toolbox
+ * Fixed ZEN-12637: zodbscan - remove scanning of zodb_session
+ * Fixed ZEN-12409: zodbscan should only recommend zenossdbpack if threshold exceeded
+ * Fixed ZEN-12405: zodbscan must print full exceptions and log output to file
+ * Fixed ZEN-12404: zodbscan should check to see if tools already running
+ * Fixed ZEN-12403: zodbscan needs to mention log file, show absolute start time
+ * Fixed ZEN-12402: zodbscan missing return code (zero/one)
+ * Fixed ZEN-12160: zodbscan fails on import of ZenStatus
 
 0.2.0
 --------------------
