@@ -325,7 +325,7 @@ Refers to a missing object:
         with gc_cache_every(1000, self._db):
             reported, scanned, total = self.verify(oid)
 
-        if (100.0*scanned/total) < 99.9:
+        if (100.0*scanned/total) < 90.0:
             print("  ** %3.2f%% of %s objects not reachable - examine your zenossdbpack settings **" %
                   ((100.0-100.0*scanned/total), self._dbname))
             log.info("%3.2f%% of %s objects not reachable - examine your zenossdbpack settings" %
