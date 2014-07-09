@@ -35,7 +35,6 @@ from ZODB.utils import u64
 
 execution_start = time.time()
 sys.path.append ("/opt/zenoss/Products/ZenModel")		# From ZEN-12160
-any_issue_detected = False
 number_of_issues = 0
 log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
 if not os.path.exists(log_file_path):
@@ -258,7 +257,6 @@ Refers to a missing object:
            oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep))
 
     def verify(self, root):
-        global any_issue_detected
         global number_of_issues
 
         database_size = self._size
@@ -296,7 +294,6 @@ Refers to a missing object:
                     seen.add(oid)
                 except POSKeyError:
                     self.report(oid, path)
-                    any_issue_detected = True
                     number_of_issues += 1
                 else:
                     refs = get_refs(state)
@@ -347,7 +344,6 @@ def main():
     if not get_lock("zenoss-toolbox"):
         sys.exit(1)
 
-    global any_issue_detected
     global number_of_issues
 
     cli_options = parse_options()
@@ -358,16 +354,16 @@ def main():
                                                datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zodbscan completed in %1.2f seconds" % (time.time() - execution_start))
 
-    if any_issue_detected:
-        if number_of_issues == 1:
-            print("A Dangling Reference (POSKeyError) was detected:")
-        else:
-            print("Dangling References (POSKeyErrors) were detected:")
-        print("  * Check detailed log file at %s" % (log_file_name))
-        print("  * Consult http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
-        sys.exit(1)
-    else:
+    if number_of_issues == 0:
         sys.exit(0)
+    if number_of_issues == 1:
+        print("A Dangling Reference (POSKeyError) was detected:")
+    else
+        print("Dangling References (POSKeyErrors) were detected:")
+
+    print("  * Check detailed log file at %s" % (log_file_name))
+    print("  * Consult http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
