@@ -358,7 +358,7 @@ def main():
         sys.exit(0)
     if number_of_issues == 1:
         print("A Dangling Reference (POSKeyError) was detected:")
-    else
+    else:
         print("Dangling References (POSKeyErrors) were detected:")
 
     print("  * Check detailed log file at %s" % (log_file_name))
