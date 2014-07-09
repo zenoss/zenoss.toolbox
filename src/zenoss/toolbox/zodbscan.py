@@ -301,7 +301,6 @@ Refers to a missing object:
 
             if not curstack:
                 curstack = stack
-                stack = None
                 stack = deque([])
 
         if number_of_issues > 0:
