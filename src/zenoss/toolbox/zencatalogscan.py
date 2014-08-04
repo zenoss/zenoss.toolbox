@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #####################
 
-scriptVersion = "1.0.3"
+scriptVersion = "1.0.4"
 
 import Globals
 import argparse
@@ -132,12 +132,16 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles):
 
 
 def alt_reindex_devices(): 	# ZEN-10793: alternative for dmd.Devices.reIndex()
+    output_count = 0
     for dev in dmd.Devices.getSubDevicesGen_recursive():
+        if (output_count % 10) == 0:
+            progress_bar("\rReindexing %s ... %8d devices processed" % ("Devices".rjust(13), output_count))
         notify(IndexingEvent(dev))
         dev.index_object(noips=True)
         for comp in dev.getDeviceComponentsNoIndexGen():
             notify(IndexingEvent(comp))
             comp.index_object()
+        output_count += 1
 
 
 def log_reindex_exception(type, exception):
@@ -152,7 +156,8 @@ def reindex_dmd_objects():
     try:
         progress_bar("\rReindexing %s ... " % "Devices".rjust(13))
         alt_reindex_devices()
-        print("finished")
+        progress_bar("\rReindexing %s ... " % "Devices".rjust(13))
+        print("finished                                 ")
         log.info("Devices reindexed successfully")
     except Exception, e:
         log_reindex_exception("Devices", e)

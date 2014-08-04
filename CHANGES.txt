@@ -1,6 +1,19 @@
 Changelog
 =========
 
+0.2.2
+--------------------
+ * Fixed ZEN-13194: zencatalogscan should output progress during device dmd reindex
+ * Fixed ZEN-13106: findposkeyerror script is missing dmd context
+ * Fixed ZEN-12718: findposkeyerror.py UnboundLocalError referencing 'e'
+ * Fixed ZEN-12683: findposkeyerror tracebacks on ZenPack.zenoss.AdvancedSearch on Core
+ * Fixed ZEN-12406: findposkeyerror must print full exceptions and log output to file
+ * Fixed ZEN-12328: findposkeyerror needs to mention log file, show absolute start time
+ * Fixed ZEN-12327: findposkeyerror missing return code (zero/one)
+ * Fixed ZEN-12326: findposkeyerror should check to see if tools already running
+ * Fixed ZEN-11587: findposkeyerror script needs to show progress as it runs
+ * Fixed ZEN-10807: findposkeyerror ComponentSearchFixer() not included in _fixits() 
+
 0.2.1
 --------------------
  * Fixed ZEN-12671: zencatalogscan should locate log in $ZENHOME/log/toolbox
