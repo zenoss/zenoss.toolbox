@@ -13,16 +13,12 @@ import re
 import socket
 import sys
 import time
-import traceback
 import transaction
 
-from Queue import Empty
-from multiprocessing import Process, Value, Lock, Array, cpu_count, log_to_stderr, get_logger
-from multiprocessing.queues import Queue
+from multiprocessing import Lock, Value
 from time import localtime, strftime
 from ZODB.POSException import POSKeyError
 from ZODB.utils import u64
-from ZODB.transact import transact
 from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenRelations.RelationshipBase import RelationshipBase
 from Products.ZenUtils.Utils import unused
