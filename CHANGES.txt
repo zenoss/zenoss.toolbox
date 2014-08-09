@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.2.3
+--------------------
+ * Fixed ZEN-13425: findposkeyerror local variable 'name' referenced before assignment
+ * Fixed ZEN-12325: findposkeyerror memory growth continues unbounded until finish
+
 0.2.2
 --------------------
  * Fixed ZEN-13194: zencatalogscan should output progress during device dmd reindex
