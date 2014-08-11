@@ -45,6 +45,7 @@ log.info("Initializing findposkeyerror")
 ZenScriptBase.doesLogging = False  # disable logging configuration
 dmd = ZenScriptBase(noopts=True, connect=True).dmd
 log.info("Obtained ZenScriptBase connection")
+PROGRESS_INTERVAL = 829  # Prime number near 1000 ending in a 9, used for progress bar
 
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
@@ -282,7 +283,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
         path = node.getPhysicalPath()
         path_string = "/".join(path)
 
-        if (counters['item_count'].value() % 829) == 0:
+        if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
             if not use_unlimited_memory:
                 transaction.abort()
             progress_bar(counters['item_count'].value(), counters['error_count'].value(),
@@ -303,7 +304,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
 
         for name in relationships:
             try:
-                if (counters['item_count'].value() % 829) == 0:
+                if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
                     if not use_unlimited_memory:
                         transaction.abort()
                     progress_bar(counters['item_count'].value(), counters['error_count'].value(),
@@ -336,7 +337,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
 
         for name in attributes:
             try:
-                if (counters['item_count'].value() % 829) == 0:
+                if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
                     if not use_unlimited_memory:
                         transaction.abort()
                     progress_bar(counters['item_count'].value(), counters['error_count'].value(),
@@ -366,6 +367,8 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
 
 def parse_options():
     """Defines command-line options for script """
+    """ NOTE: With --unlimitedram in my testing, I have seen RAM usage grow to just over 2x the size of
+    'du -h /opt/zends/data/zodb'.  For a 20GB /opt/zends/data/zodb folder, I saw RAM usage of ~ 42GB"""
 
     parser = argparse.ArgumentParser(version=scriptVersion,
                                      description="scans a zodb path for POSKeyErrors")
@@ -375,7 +378,7 @@ def parse_options():
     parser.add_argument("-p", "--path", action="store", default="/", type=str,
                         help="base path to scan from (Devices.Server)?")
     parser.add_argument("-u", "--unlimitedram", action="store_true", default=False,
-                        help="use up to 3x total zodb size to run ~40 percent faster")
+                        help="skip transaction.abort() - unbounded RAM, ~40%% faster")
 
     return vars(parser.parse_args())
 
