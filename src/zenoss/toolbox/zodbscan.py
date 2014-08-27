@@ -40,12 +40,15 @@ log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
 if not os.path.exists(log_file_path):
     os.makedirs(log_file_path)
 log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox', 'zodbscan.log')
-logging.basicConfig(filename='%s' % (log_file_name),
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
+logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO)
-log = logging.getLogger("zen.zodbscan")
+log = logging.getLogger("zen.zencatalogscan")
+handler = logging.handlers.RotatingFileHandler(log_file_name,
+                                               maxBytes=1024*1024,
+                                               backupCount=5,
+                                               )
+log.addHandler(handler)
 print("\n[%s] Initializing zodbscan (detailed log at %s)\n" %
       (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
 log.setLevel(logging.INFO)
@@ -60,11 +63,11 @@ def get_lock(process_name):
     lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
         lock_socket.bind('\0' + process_name)
-        log.info("'zenoss.toolbox' lock acquired - continuing")
+        log.info("'%s' lock acquired - continuing" % (process_name))
     except socket.error:
-        print("[%s] Unable to acquire zenoss.toolbox socket lock - are other tools already running?\n" %
-              (strftime("%Y-%m-%d %H:%M:%S", localtime())))
-        log.error("'zenoss.tooblox' lock already exists - unable to acquire - exiting")
+        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
+              (strftime("%Y-%m-%d %H:%M:%S", localtime()), process_name))
+        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
         return False
     return True
 
@@ -340,12 +343,15 @@ def main():
     """Scans through zodb hierarchy checking objects for dangling references"""
 
     # Attempt to get the zenoss-toolbox lock before any actions performed
-    if not get_lock("zenoss-toolbox"):
+    if not get_lock("zenoss.toolbox"):
         sys.exit(1)
 
     global number_of_issues
 
     cli_options = parse_options()
+
+    log.info("Command line options: %s" % (cli_options))
+
 
     PKEReporter('zodb').run()
 
@@ -357,8 +363,10 @@ def main():
         sys.exit(0)
     if number_of_issues == 1:
         print("A Dangling Reference (POSKeyError) was detected:")
+        log.info("A dangling reference (POSKeyError) was detected")
     else:
         print("Dangling References (POSKeyErrors) were detected:")
+        log.info("%d dangling references (POSKeyErrors) were detected" % (number_of_issues))
 
     print("  * Check detailed log file at %s" % (log_file_name))
     print("  * Consult http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
