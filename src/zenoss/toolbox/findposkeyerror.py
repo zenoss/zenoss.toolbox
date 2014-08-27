@@ -1,18 +1,19 @@
 #!/opt/zenoss/bin/python
 #####################
 
-scriptVersion = "1.5.0"
+scriptVersion = "1.6.0"
 
-import Globals
 import abc
 import argparse
 import datetime
+import Globals
 import logging
 import os
 import re
 import socket
 import sys
 import time
+import traceback
 import transaction
 
 from multiprocessing import Lock, Value
@@ -21,53 +22,72 @@ from ZODB.POSException import POSKeyError
 from ZODB.utils import u64
 from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenRelations.RelationshipBase import RelationshipBase
-from Products.ZenUtils.Utils import unused
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
-
-execution_start = time.time()
-log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
-if not os.path.exists(log_file_path):
-    os.makedirs(log_file_path)
-log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox', 'findposkeyerror.log')
-logging.basicConfig(filename='%s' % (log_file_name),
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
-log = logging.getLogger("zen.findposkeyerror")
-# Configure NullHandler for logging to suppress 'no handler for logger' messages.
-logger = logging.getLogger()
-logger.addHandler(logging.NullHandler())
-print("\n[%s] Initializing findposkeyerror (detailed log at %s)\n" %
-      (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
-log.setLevel(logging.INFO)
-log.info("Initializing findposkeyerror")
-ZenScriptBase.doesLogging = False  # disable logging configuration
-dmd = ZenScriptBase(noopts=True, connect=True).dmd
-log.info("Obtained ZenScriptBase connection")
-PROGRESS_INTERVAL = 829  # Prime number near 1000 ending in a 9, used for progress bar
-
+from Products.ZenUtils.Utils import unused
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
     log.info("Unable to import AdvancedSearch.SearchManager")
 
+unused(Globals) 
 
-unused(Globals)
+
+def configure_logging(scriptname):
+    '''Configure logging for zenoss.toolbox tool usage'''
+
+    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
+    if not os.path.exists('/tmp'):
+        print "/tmp doesn't exist - aborting"
+        exit(1)
+    zenhome_path = os.getenv("ZENHOME")
+    if not zenhome_path:
+        print "$ZENHOME undefined - are you running as the zenoss user?"
+        exit(1)
+    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
+    if not os.path.exists(log_file_path):
+        os.makedirs(log_file_path)
+    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
+    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
+
+    # Create full path filename string for logfile, create RotatingFileHandler
+    toolbox_log = logging.getLogger("%s" % (scriptname))
+    toolbox_log.setLevel(logging.INFO)
+    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
+    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
+
+    # Set logging.Formatter for format and datefmt, attach handler
+    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.DEBUG)
+    toolbox_log.addHandler(handler)
+
+    # Print initialization string to console, log status to logfile
+    print("\n[%s] Initializing %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
+    toolbox_log.info("Initializing %s" % (scriptname))
+    return toolbox_log
 
 
-def get_lock(process_name):
+def get_lock(process_name, log):
+    '''Global lock function to keep multiple tools from running at once'''
     global lock_socket
     lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
         lock_socket.bind('\0' + process_name)
-        log.info("'zenoss.toolbox' lock acquired - continuing")
+        log.debug("Acquired '%s' execution lock" % (process_name))
     except socket.error:
-        print("[%s] Unable to acquire zenoss.toolbox socket lock - are other tools already running?\n" %
-              (strftime("%Y-%m-%d %H:%M:%S", localtime())))
-        log.error("'zenoss.tooblox' lock already exists - unable to acquire - exiting")
+        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
+              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
+        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
+        log.info("############################################################")
         return False
     return True
+
+
+def inline_print(message):
+    '''Print message on a single line using sys.stdout.write, .flush'''
+    sys.stdout.write("\r%s" % (message))
+    sys.stdout.flush()
 
 
 class Counter(object):
@@ -84,20 +104,12 @@ class Counter(object):
             return self.val.value
 
 
-counters = {
-    'item_count': Counter(0),
-    'error_count': Counter(0),
-    'repair_count': Counter(0)
-    }
-
-
 def progress_bar(items, errors, repairs, fix_value):
     if fix_value:
-        sys.stdout.write("\r  | Items Scanned: %12d | Errors:  %6d | Repairs: %6d |  " %
-                         (items, errors, repairs))
+        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d | Repairs: %6d |  " %
+                     (strftime("%Y-%m-%d %H:%M:%S", localtime()), items, errors, repairs))
     else:
-        sys.stdout.write("\r  | Items Scanned: %12d | Errors:  %6d |  " % (items, errors))
-    sys.stdout.flush()
+        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d |  " % (strftime("%Y-%m-%d %H:%M:%S", localtime()), items, errors))
 
 
 class Fixer(object):
@@ -241,7 +253,7 @@ def _getPathStr(path):
     return "app%s" % ('.'.join(path)) if len(path) > 1 else "app"
 
 
-def fixPOSKeyError(exname, ex, objType, objId, parentPath):
+def fixPOSKeyError(exname, ex, objType, objId, parentPath, dmd, log, counters):
     """
     Fixes POSKeyErrors given:
         Name of exception type object,
@@ -250,7 +262,6 @@ def fixPOSKeyError(exname, ex, objType, objId, parentPath):
         Name (ID) of the object,
         The path to the parent of the named object
     """
-    global counters
     # -- verify that the OIDs match
     for fixer in _fixits:
         fix = fixer.fixable(ex, objId, parentPath)
@@ -270,10 +281,10 @@ def getOID(ex):
     return "0x%08x" % int(str(ex), 16)
 
 
-def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
+def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, counters):
     """ Processes issues as they are found, handles progress output, logs to output file """
 
-    global counters
+    PROGRESS_INTERVAL = 829  # Prime number near 1000 ending in a 9, used for progress bar
 
     # Objects that will have their children traversed are stored in 'nodes'
     nodes = [topnode]
@@ -297,7 +308,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
             counters['error_count'].increment()
             if attempt_fix:
                 if isinstance(e, POSKeyError):
-                    fixPOSKeyError(type(e).__name__, e, "node", name, path)
+                    fixPOSKeyError(type(e).__name__, e, "node", name, path, dmd, log, counters)
             continue
         except Exception as e:
             log.exception(e)
@@ -330,7 +341,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
                             (type(e).__name__, e, "relationship", name, path_string))
                 if attempt_fix:
                     if isinstance(e, POSKeyError):
-                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path)
+                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
             except Exception as e:
                 log.warning("%s: %s on %s '%s' of %s" %
                             (type(e).__name__, e, "relationship", name, path_string))
@@ -351,7 +362,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory):
                             (type(e).__name__, e, "attribute", name, path_string))
                 if attempt_fix:
                     if isinstance(e, POSKeyError):
-                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path)
+                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
             except Exception as e:
                 log.warning("%s: %s on %s '%s' of %s" %
                             (type(e).__name__, e, "relationship", name, path_string))
@@ -373,6 +384,8 @@ def parse_options():
     parser = argparse.ArgumentParser(version=scriptVersion,
                                      description="scans a zodb path for POSKeyErrors")
 
+    parser.add_argument("-v10", "--debug", action="store_true", default=False,
+                        help="verbose log output (debug logging)")
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to fix ZenRelationship objects")
     parser.add_argument("-p", "--path", action="store", default="/", type=str,
@@ -386,13 +399,26 @@ def parse_options():
 def main():
     """ Scans through zodb hierarchy (from user-supplied path, defaults to /,  checking for PKEs """
 
-    # Attempt to get the zenoss-toolbox lock before any actions performed
-    if not get_lock("zenoss-toolbox"):
-        sys.exit(1)
-
-    global counters
-
+    execution_start = time.time()
     cli_options = parse_options()
+    log = configure_logging('findposkeyerror')
+    log.info("Command line options: %s" % (cli_options))
+    if cli_options['debug']:
+        log.setLevel(logging.DEBUG)
+        
+    # Attempt to get the zenoss.toolbox lock before any actions performed
+    if not get_lock("zenoss.toolbox", log):
+        sys.exit(1)
+        
+    # Obtain dmd ZenScriptBase connection
+    dmd = ZenScriptBase(noopts=True, connect=True).dmd
+    log.debug("ZenScriptBase connection obtained")
+
+    counters = {
+        'item_count': Counter(0),
+        'error_count': Counter(0),
+        'repair_count': Counter(0)
+        }
 
     processed_path = re.split("[./]", cli_options['path'])
     if processed_path[0] == "app":
@@ -407,13 +433,14 @@ def main():
         print("[%s] Examining items under the '%s' path (%s):\n" %
               (strftime("%Y-%m-%d %H:%M:%S", localtime()), cli_options['path'], folder))
         log.info("Examining items under the '%s' path (%s)" % (cli_options['path'], folder))
-        findPOSKeyErrors(folder, cli_options['fix'], cli_options['unlimitedram'])
+        findPOSKeyErrors(folder, cli_options['fix'], cli_options['unlimitedram'], dmd, log, counters)
         print
 
     print("\n[%s] Execution finished in %s\n" %
           (strftime("%Y-%m-%d %H:%M:%S", localtime()),
            datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("findposkeyerror completed in %1.2f seconds" % (time.time() - execution_start))
+    log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
         print("** WARNING ** Issues were detected - Consult KB article #213 at")
