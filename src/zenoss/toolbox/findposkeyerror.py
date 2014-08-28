@@ -443,8 +443,8 @@ def main():
     log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
-        print("** WARNING ** Issues were detected - Consult KB article #217 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
+        print("** WARNING ** Issues were detected - Consult KB article #213 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213\n")
         sys.exit(1)
     else:
         sys.exit(0)

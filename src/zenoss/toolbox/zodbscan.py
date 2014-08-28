@@ -399,8 +399,8 @@ def main():
     log.info("############################################################")
 
     if (number_of_issues.value() > 0):
-        print("** WARNING ** Dangling Reference(s) were detected - Consult KB article #213 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213\n")
+        print("** WARNING ** Dangling Reference(s) were detected - Consult KB article #217 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
         sys.exit(1)
     else:
         sys.exit(0)
