@@ -3,6 +3,11 @@ Changelog
 
 0.3.0
 --------------------
+ * Fixed ZEN-13951: zencatalogscan not properly scanning jobs catalog
+ * Fixed ZEN-13952: findposkeyerror failing against zenoss core
+
+0.3.0
+--------------------
  * Fixed ZEN-13191: zencatalogscan - add eventClassSearch, rrdtemplatesearch, mibsearch catalogs
  * Fixed ZEN-13429: zencatalogscan zenoss.toolbox get_lock logging incorrect
  * Fixed ZEN-13433: zencatalogscan customer feedback needs integrated
