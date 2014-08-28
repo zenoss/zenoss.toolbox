@@ -107,9 +107,9 @@ class Counter(object):
 def progress_bar(items, errors, repairs, fix_value):
     if fix_value:
         inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d | Repairs: %6d |  " %
-                     (strftime("%Y-%m-%d %H:%M:%S", localtime()), items, errors, repairs))
+                     (time.strftime("%Y-%m-%d %H:%M:%S"), items, errors, repairs))
     else:
-        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d |  " % (strftime("%Y-%m-%d %H:%M:%S", localtime()), items, errors))
+        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d |  " % (time.strftime("%Y-%m-%d %H:%M:%S"), items, errors))
 
 
 class Fixer(object):
@@ -443,8 +443,8 @@ def main():
     log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
-        print("** WARNING ** Issues were detected - Consult KB article #213 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213\n")
+        print("** WARNING ** Issues were detected - Consult KB article #217 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
         sys.exit(1)
     else:
         sys.exit(0)

@@ -1,7 +1,7 @@
 #!/opt/zenoss/bin/python
 ########################
 
-scriptVersion = "0.9.0"
+scriptVersion = "1.0.0"
 
 import Globals
 import argparse
@@ -21,6 +21,7 @@ import ZConfig
 from pickle import Unpickler as UnpicklerBase
 from collections import deque
 from time import localtime, strftime
+from multiprocessing import Lock, Value
 from relstorage.zodbpack import schema_xml
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
@@ -33,48 +34,76 @@ from ZODB.DB import DB
 from ZODB.utils import u64
 
 
-execution_start = time.time()
-sys.path.append ("/opt/zenoss/Products/ZenModel")		# From ZEN-12160
-number_of_issues = 0
-log_file_path = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox')
-if not os.path.exists(log_file_path):
-    os.makedirs(log_file_path)
-log_file_name = os.path.join(os.getenv("ZENHOME"), 'log', 'toolbox', 'zodbscan.log')
-logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
-log = logging.getLogger("zen.zencatalogscan")
-handler = logging.handlers.RotatingFileHandler(log_file_name,
-                                               maxBytes=1024*1024,
-                                               backupCount=5,
-                                               )
-log.addHandler(handler)
-print("\n[%s] Initializing zodbscan (detailed log at %s)\n" %
-      (strftime("%Y-%m-%d %H:%M:%S", localtime()), log_file_name))
-log.setLevel(logging.INFO)
-log.info("Initializing zodbscan")
+def configure_logging(scriptname):
+    '''Configure logging for zenoss.toolbox tool usage'''
+    
+    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
+    if not os.path.exists('/tmp'):
+        print "/tmp doesn't exist - aborting"
+        exit(1)
+    zenhome_path = os.getenv("ZENHOME")
+    if not zenhome_path:
+        print "$ZENHOME undefined - are you running as the zenoss user?"
+        exit(1)
+    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
+    if not os.path.exists(log_file_path):
+        os.makedirs(log_file_path)
+    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
+    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
 
-logging.getLogger('relstorage').setLevel(logging.CRITICAL)
-logging.getLogger('ZODB.Connection').setLevel(logging.CRITICAL)
+    # Create full path filename string for logfile, create RotatingFileHandler
+    toolbox_log = logging.getLogger("%s" % (scriptname))
+    toolbox_log.setLevel(logging.INFO)
+    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
+    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
+
+    # Set logging.Formatter for format and datefmt, attach handler
+    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.DEBUG)
+    toolbox_log.addHandler(handler)
+
+    # Print initialization string to console, log status to logfile
+    print("\n[%s] Initializing %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
+    toolbox_log.info("Initializing %s" % (scriptname))
+    return toolbox_log
 
 
-def get_lock(process_name):
+def get_lock(process_name, log):
+    '''Global lock function to keep multiple tools from running at once'''
     global lock_socket
     lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
         lock_socket.bind('\0' + process_name)
-        log.info("'%s' lock acquired - continuing" % (process_name))
+        log.debug("Acquired '%s' execution lock" % (process_name))
     except socket.error:
         print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
-              (strftime("%Y-%m-%d %H:%M:%S", localtime()), process_name))
+              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
         log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
+        log.info("############################################################")
         return False
     return True
 
 
-def progress_bar(message):
-    sys.stdout.write("%s" % (message))
+def inline_print(message):
+    '''Print message on a single line using sys.stdout.write, .flush'''
+    sys.stdout.write("\r%s" % (message))
     sys.stdout.flush()
+
+
+class Counter(object):
+    def __init__(self, initval=0):
+        self.val = Value('i', initval)
+        self.lock = Lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
 
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
@@ -229,7 +258,7 @@ class PKEReporter(object):
         repred = repr(oid)
         return u64ed, oid_0xstyle, repred
 
-    def report(self, oid, ancestors):
+    def report(self, oid, ancestors, log):
         parent_oid = ancestors[-2]
         parent_klass = None
         try:
@@ -259,18 +288,16 @@ Refers to a missing object:
            par_u64=par_u64, par_0x=par_0x, par_rep=par_rep,
            oid_u64=oid_u64, oid_0x=oid_0x, oid_rep=oid_rep))
 
-    def verify(self, root):
-        global number_of_issues
+    def verify(self, root, log, number_of_issues):
 
         database_size = self._size
         scanned_count = 0
         progress_bar_chunk_size = 1
-        number_of_issues = 0
 
         if (database_size > 50):
             progress_bar_chunk_size = (database_size//50) + 1
 
-        progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*0, 0))
+        inline_print("[%s]  Scanning  [%-50s] %3d%% " % (time.strftime("%Y-%m-%d %H:%M:%S"), '='*0, 0))
 
         seen = set()
         path = ()
@@ -282,22 +309,22 @@ Refers to a missing object:
 
             if (scanned_count % progress_bar_chunk_size) == 0:
                 chunk_number = scanned_count // progress_bar_chunk_size
-                if number_of_issues > 2:
-                    progress_bar("\r  CRITICAL  [%-50s] %3d%% [%d Dangling References]" %
-                                 ('='*chunk_number, 2*chunk_number, number_of_issues))
-                elif number_of_issues == 1:
-                    progress_bar("\r  CRITICAL  [%-50s] %3d%% [%d Dangling Reference]" %
-                                 ('='*chunk_number, 2*chunk_number, number_of_issues))
+                if number_of_issues.value() > 2:
+                    inline_print("[%s]  CRITICAL  [%-50s] %3d%% [%d Dangling References]" %
+                                 (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk_number, 2*chunk_number, number_of_issues.value()))
+                elif number_of_issues.value() == 1:
+                    inline_print("[%s]  CRITICAL  [%-50s] %3d%% [%d Dangling Reference]" %
+                                 (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk_number, 2*chunk_number, number_of_issues.value()))
                 else:
-                    progress_bar("\r  Scanning  [%-50s] %3d%% " % ('='*chunk_number, 2*chunk_number))
+                    inline_print("[%s]  Scanning  [%-50s] %3d%% " % (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk_number, 2*chunk_number))
 
             if (oid not in seen):
                 try:
                     state = self._storage.load(oid)[0]
                     seen.add(oid)
                 except POSKeyError:
-                    self.report(oid, path)
-                    number_of_issues += 1
+                    self.report(oid, path, log)
+                    number_of_issues.increment()
                 else:
                     refs = get_refs(state)
                     stack.extend((o, path + (o,)) for o in set(refs) - seen)
@@ -306,15 +333,15 @@ Refers to a missing object:
                 curstack = stack
                 stack = deque([])
 
-        if number_of_issues > 0:
-            progress_bar("\r  CRITICAL  [%-50s] %3.0d%% [%d Dangling References]\n" %
-                         ('='*50, 100, number_of_issues))
+        if number_of_issues.value() > 0:
+            inline_print("[%s]  CRITICAL  [%-50s] %3.0d%% [%d Dangling References]\n" %
+                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100, number_of_issues.value()))
         else:
-            progress_bar("\r  Verified  [%-50s] %3.0d%%\n" % ('='*50, 100))
+            inline_print("[%s]  Verified  [%-50s] %3.0d%%\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100))
 
         return number_of_issues, len(seen), self._size
 
-    def run(self):
+    def run(self, log, number_of_issues):
         print("[%s] Examining %d items in the '%s' database:" %
               (strftime("%Y-%m-%d %H:%M:%S", localtime()), self._size,  self._dbname))
         log.info("Examining %d items in %s database" % (self._size, self._dbname))
@@ -322,7 +349,7 @@ Refers to a missing object:
         oid = '\x00\x00\x00\x00\x00\x00\x00\x01'
 
         with gc_cache_every(1000, self._db):
-            reported, scanned, total = self.verify(oid)
+            reported, scanned, total = self.verify(oid, log, number_of_issues)
 
         if (100.0*scanned/total) < 90.0:
             print("  ** %3.2f%% of %s objects not reachable - examine your zenossdbpack settings **" %
@@ -336,41 +363,47 @@ def parse_options():
     """Defines command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
                                      description="Scans zodb/zodb_session for dangling references")
+
+    parser.add_argument("-v10", "--debug", action="store_true", default=False,
+                        help="verbose log output (debug logging)")
     return vars(parser.parse_args())
 
 
 def main():
     """Scans through zodb hierarchy checking objects for dangling references"""
 
-    # Attempt to get the zenoss-toolbox lock before any actions performed
-    if not get_lock("zenoss.toolbox"):
-        sys.exit(1)
-
-    global number_of_issues
+    execution_start = time.time()
+    sys.path.append ("/opt/zenoss/Products/ZenModel")               # From ZEN-12160
 
     cli_options = parse_options()
-
+    log = configure_logging('zodbscan')
     log.info("Command line options: %s" % (cli_options))
+    if cli_options['debug']:
+        log.setLevel(logging.DEBUG)
 
+    #logging.getLogger('relstorage').setLevel(logging.CRITICAL)
+    #logging.getLogger('ZODB.Connection').setLevel(logging.CRITICAL)
+        
+    # Attempt to get the zenoss.toolbox lock before any actions performed
+    if not get_lock("zenoss.toolbox", log):
+        sys.exit(1)
 
-    PKEReporter('zodb').run()
+    number_of_issues = Counter(0)
+
+    PKEReporter('zodb').run(log, number_of_issues)
+    log.info("%d Dangling References were detected" % (number_of_issues.value()))
 
     print("[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),
                                                datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zodbscan completed in %1.2f seconds" % (time.time() - execution_start))
+    log.info("############################################################")
 
-    if number_of_issues == 0:
-        sys.exit(0)
-    if number_of_issues == 1:
-        print("A Dangling Reference (POSKeyError) was detected:")
-        log.info("A dangling reference (POSKeyError) was detected")
+    if (number_of_issues.value() > 0):
+        print("** WARNING ** Dangling Reference(s) were detected - Consult KB article #213 at")
+        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213\n")
+        sys.exit(1)
     else:
-        print("Dangling References (POSKeyErrors) were detected:")
-        log.info("%d dangling references (POSKeyErrors) were detected" % (number_of_issues))
-
-    print("  * Check detailed log file at %s" % (log_file_name))
-    print("  * Consult http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
-    sys.exit(1)
+        sys.exit(0)
 
 
 if __name__ == "__main__":
