@@ -1,6 +1,26 @@
 Changelog
 =========
 
+0.3.0
+--------------------
+ * Fixed ZEN-13191: zencatalogscan - add eventClassSearch, rrdtemplatesearch, mibsearch catalogs
+ * Fixed ZEN-13429: zencatalogscan zenoss.toolbox get_lock logging incorrect
+ * Fixed ZEN-13433: zencatalogscan customer feedback needs integrated
+ * Fixed ZEN-13524: zencatalogscan progress bars should show last updated timestamp
+ * Fixed ZEN-13592: zencatalogscan logs missing catalogs as ERROR, not INFO
+ * Fixed ZEN-13596: zencatalogscan needs to use rotating log files
+ * Fixed ZEN-13597: findposkeyerror needs to use rotating log files
+ * Fixed ZEN-13598: zodbscan needs to use rotating log files
+ * Fixed ZEN-13599: findposkeyerror progress bars should show last updated timestamp
+ * Fixed ZEN-13600: zodbscan progress bars should show last updated timestamp
+ * Fixed ZEN-13636: zencatalogscan needs option for doing just reindex
+ * Fixed ZEN-13666: zodbscan zenoss.toolbox get_lock logging incorrect
+ * Fixed ZEN-13667: findposkeyerror zenoss.toolbox get_lock logging incorrect 
+ * Fixed ZEN-13757: findposkeyerror reports 3 getDatabase tracebacks
+ * Fixed ZEN-13925: zodbscan should log command line parameters to log file
+ * Fixed ZEN-13924: findposkeyerror should log command line parameters to log file
+ * Fixed ZEN-13923: zencatalogscan should log command line parameters to log file
+
 0.2.3
 --------------------
  * Fixed ZEN-13425: findposkeyerror local variable 'name' referenced before assignment
@@ -48,7 +68,7 @@ Changelog
 * Fixed ZEN-10793: zencatalogscan reindex can fail for dmd.Devices.reIndex()
 * Fixed ZEN-10579: zencatalogscan doesn't reindex component catalogs
 * Fixed ZEN-10580: zencatalogscan must print full exceptions and log output to file
-* Fixed ZEN-10567: zencatalogscan should cycle until it fixes all issues 
+* Fixed ZEN-10567: zencatalogscan should cycle until it fixes all issues
 
 0.1.8
 --------------------
