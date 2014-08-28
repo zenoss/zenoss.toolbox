@@ -260,7 +260,7 @@ def build_catalog_dict(dmd, log):
         'Events.eventClassSearch': 'dmd.Events.eventClassSearch',
         'global_catalog': 'dmd.global_catalog',
         'IPv6Networks.ipSearch': 'dmd.IPv6Networks.ipSearch',
-        'JobManager.jobs_catalog': 'dmd.JobManager.jobs_catalog',
+        'JobManager.job_catalog': 'dmd.JobManager.job_catalog',
         'maintenanceWindowSearch': 'dmd.maintenanceWindowSearch',
         'Manufacturers.productSearch': 'dmd.Manufacturers.productSearch',
         'Mibs.mibsearch': 'dmd.Mibs.mibsearch',

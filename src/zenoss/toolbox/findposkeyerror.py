@@ -27,7 +27,8 @@ from Products.ZenUtils.Utils import unused
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
-    log.info("Unable to import AdvancedSearch.SearchManager")
+    pass
+
 
 unused(Globals) 
 
