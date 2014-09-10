@@ -1,7 +1,11 @@
 Changelog
 =========
 
-0.3.0
+0.3.2
+--------------------
+ * Fixed ZEN-14078: findposkeyerror fails on fixable (no dmd reference)
+
+0.3.1
 --------------------
  * Fixed ZEN-13951: zencatalogscan not properly scanning jobs catalog
  * Fixed ZEN-13952: findposkeyerror failing against zenoss core

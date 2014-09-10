@@ -1,7 +1,7 @@
 #!/opt/zenoss/bin/python
 #####################
 
-scriptVersion = "1.6.0"
+scriptVersion = "1.6.1"
 
 import abc
 import argparse
@@ -117,7 +117,7 @@ class Fixer(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def fixable(self, ex, objId, parentPath):
+    def fixable(self, ex, objId, parentPath, dmd, log):
         """
         Return a no-argument callable object that will perform the fix
         when invoked or None if not fixable.
@@ -125,7 +125,7 @@ class Fixer(object):
 
 
 class RelFixer(Fixer):
-    def fixable(self, ex, relId, parentPath):
+    def fixable(self, ex, relId, parentPath, dmd, log):
         """
         Return True if this object can fix the exception.
         """
@@ -141,13 +141,13 @@ class RelFixer(Fixer):
             exOID = getOID(ex)
             relOID = getPOID(relationship._objects)
             if exOID == relOID:
-                return lambda: self._fix(exOID, relOID, relationship, parent)
+                return lambda: self._fix(exOID, relOID, relationship, parent, dmd, log)
             else:
                 log.warning("Cannot fix this relationship - exOID %s != relOID %s" % (exOID, relOID))
         except:
             return None
 
-    def _fix(self, exOID, relOID, relationship, parent):
+    def _fix(self, exOID, relOID, relationship, parent, dmd, log):
         """ Attempt to fix the POSKeyError """
         cls = relationship._objects.__class__
         relationship._objects = cls()
@@ -167,7 +167,7 @@ class SearchManagerFixer(Fixer):
     # >>> d=_
     # >>> d._delOb('SearchManager')
     # >>> commit()
-    def fixable(self, ex, objId, parentPath):
+    def fixable(self, ex, objId, parentPath, dmd, log):
         """ Return True if this object can fix the exception.  """
         if objId != 'SearchManager':
             return None
@@ -179,11 +179,11 @@ class SearchManagerFixer(Fixer):
         exOID = getOID(ex)
         relOID = getPOID(obj)
         if exOID == relOID:
-            return lambda: self._fix(exOID, parent)
+            return lambda: self._fix(exOID, parent, dmd, log)
 
         return None
 
-    def _fix(self, exOID, parent):
+    def _fix(self, exOID, parent, dmd, log):
         """ Delete only; a new one will be created when a SearchProvider is requested.  """
         try:
             parent._delOb('SearchManager')
@@ -205,7 +205,7 @@ class ComponentSearchFixer(Fixer):
           app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
     """
 
-    def fixable(self, ex, objId, parentPath):
+    def fixable(self, ex, objId, parentPath, dmd, log):
         """ Return True if this object can fix the exception.  """
         if objId != 'componentSearch':
             return None
@@ -215,11 +215,11 @@ class ComponentSearchFixer(Fixer):
         exOID = getOID(ex)
         relOID = getPOID(obj)
         if exOID == relOID:
-            return lambda: self._fix(exOID, parent)
+            return lambda: self._fix(exOID, parent, dmd, log)
 
         return None
 
-    def _fix(self, exOID, parent):
+    def _fix(self, exOID, parent, dmd, log):
         """ Attempt to remove and recreate the componentSearch() """
         try:
             parent._delOb('componentSearch')
@@ -265,7 +265,7 @@ def fixPOSKeyError(exname, ex, objType, objId, parentPath, dmd, log, counters):
     """
     # -- verify that the OIDs match
     for fixer in _fixits:
-        fix = fixer.fixable(ex, objId, parentPath)
+        fix = fixer.fixable(ex, objId, parentPath, dmd, log)
         if fix:
             log.info("Attempting to repair %s issue on %s" % (ex, objId))
             counters['repair_count'].increment()
