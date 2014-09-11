@@ -1,6 +1,6 @@
 zenoss.toolbox
 ==============
-*Current version: 0.3.2*
+*Current version: 0.4.0*
 
 Utilities for analyzing and debugging Zenoss environments.  
 
@@ -24,5 +24,9 @@ zencatalogscan
 --------------
 *How do I use zencatalogscan to detect and fix unresolvable object references in catalogs?*
  * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216
+
+zenrelationscan
+---------------
+*An early drop (for testing purposes only) of a tool for replacing zenchkrels
 
 Author: Brian Bibeault (bbibeault@zenoss.com)
