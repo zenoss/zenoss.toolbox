@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #####################
 
-scriptVersion = "1.1.0"
+scriptVersion = "1.2.0"
 
 import argparse
 import datetime
@@ -15,9 +15,7 @@ import traceback
 import transaction
 
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
-from Products.Zuul.catalog.events import IndexingEvent
 from ZODB.transact import transact
-from zope.event import notify
 
 
 def configure_logging(scriptname):
@@ -178,74 +176,6 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
     return False
 
 
-def reindex_dmd_object(name, object,  dmd, log):
-    try:         
-        inline_print("[%s]  Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name.rjust(13)))
-        object_reference = eval(object)
-        object_reference.reIndex()
-        transaction.commit()
-        print("finished")
-        log.info("%s reIndex() completed successfully", name)
-    except Exception as e:
-        print " FAILED  (check log file for details)"
-        log.error("%s.reIndex() failed" % (name))
-        log.exception(e)
-
-
-def reindex_dmd_objects(dmd, log):
-    print("[%s] Reindexing dmd objects" % (time.strftime("%Y-%m-%d %H:%M:%S")))
-    log.info("Reindexing dmd objects")
-    
-    log.debug("Calling transaction.abort() to minimize memory footprint")
-    transaction.abort()
-
-    # Special case for Devices, using method from altReindex ZEN-10793
-    try:
-        inline_print("[%s]  Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13)))
-        log.info("Reindexing Devices")
-        output_count = 0
-        for dev in dmd.Devices.getSubDevicesGen_recursive():
-            if (output_count % 10) == 0:
-                if (output_count % 100) == 0:
-                    log.debug("Device Reindex has passed %d devices" % (output_count))
-                inline_print("[%s]  Reindexing %s ... %8d devices processed" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13), output_count))
-            try:
-                notify(IndexingEvent(dev))
-                dev.index_object(noips=True)
-            except Exception as e: 
-                log.exception(e)
-            for comp in dev.getDeviceComponentsNoIndexGen():
-                try:
-                    notify(IndexingEvent(comp))
-                    comp.index_object()
-                except Exception as e:
-                    log.exception(e)
-            output_count += 1
-            transaction.commit()
-            dev._p_deactivate()
-        inline_print("[%s]  Reindexing %s ... finished                                    " %
-                     (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13)))
-        print ""
-        log.info("%d Devices reindexed successfully" % (output_count))
-    except Exception as e:
-        inline_print("[%s]  Reindexing %s ...  FAILED  (check log file for details)        " % 
-                     (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13)))
-        print ""
-        log.error("Devices failed to reindex successfully")
-        log.exception(e)
-
-    dmd_objects_to_reindex = {
-            'Events': 'dmd.Events',
-            'Manufacturers': 'dmd.Manufacturers',
-            'Networks': 'dmd.Networks',
-            'Services': 'dmd.Services'
-        }
- 
-    for item in dmd_objects_to_reindex.keys():
-        reindex_dmd_object(item, dmd_objects_to_reindex[item],  dmd, log)
-
-
 def build_catalog_dict(dmd, log):
     """Builds a list of catalogs present and > 0 objects"""
 
@@ -314,8 +244,6 @@ def parse_options():
                         help="verbose log output (debug logging)")
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to remove any invalid references")
-    parser.add_argument("-r", "--reindex", action="store_true", default=False,
-                        help="exclusively perform dmd.*.reIndex()")
     parser.add_argument("-n", "--cycles", action="store", default="12", type=int,
                         help="maximum times to cycle (with --fix)")
     parser.add_argument("-l", "--list", action="store_true", default=False,
@@ -348,38 +276,29 @@ def main():
     any_issue = False
     unrecognized_catalog = False
 
-    if cli_options['reindex']:
-    # Based on feedback from customer, making this an optional exclusive call if chosen 
-        reindex_dmd_objects(dmd, log)
+    # Build list of catalogs, then process catalog(s) and perform reindex if --fix
+    present_catalog_dict = build_catalog_dict(dmd, log)
+    if cli_options['list']:
+    # Output list of present catalogs to the UI, perform no further operations
+        print "List of supported Zenoss catalogs to examine:\n"
+        print "\n".join(present_catalog_dict.keys())
+        log.info("Zencatalogscan finished - list of supported catalogs output to CLI")
     else:
-    # Else build list of catalogs, then process catalog(s) and perform reindex if --fix
-        present_catalog_dict = build_catalog_dict(dmd, log)
-        if cli_options['list']:
-        # Output list of present catalogs to the UI, perform no further operations
-            print "List of supported Zenoss catalogs to examine:\n"
-            print "\n".join(present_catalog_dict.keys())
-            log.info("Zencatalogscan finished - list of supported catalogs output to CLI")
-        else:
-        # Scan through catalog(s) depending on --catalog parameter
-            if cli_options['catalog']:
-                if cli_options['catalog'] in present_catalog_dict.keys():
-                # Catalog provided as parameter is present - scan just that catalog
-                    any_issue = scan_catalog(cli_options['catalog'], present_catalog_dict[cli_options['catalog']],
-                                             cli_options['fix'], cli_options['cycles'], dmd, log)
-                else:
-                    unrecognized_catalog = True
-                    print("Catalog '%s' unrecognized - unable to scan" % (cli_options['catalog']))
-                    log.error("CLI input '%s' doesn't match recognized catalogs" % (cli_options['catalog']))
+    # Scan through catalog(s) depending on --catalog parameter
+        if cli_options['catalog']:
+            if cli_options['catalog'] in present_catalog_dict.keys():
+            # Catalog provided as parameter is present - scan just that catalog
+                any_issue = scan_catalog(cli_options['catalog'], present_catalog_dict[cli_options['catalog']],
+                                         cli_options['fix'], cli_options['cycles'], dmd, log)
             else:
-            # Else scan for all catalogs in present_catalog_dict
-                for catalog in present_catalog_dict.keys():
-                    any_issue = scan_catalog(catalog, present_catalog_dict[catalog], cli_options['fix'],
-                                             cli_options['cycles'], dmd, log) or any_issue
-
-            if cli_options['fix'] and not unrecognized_catalog:
-            # If we make changes, we still want to do the reindex
-                print ""
-                reindex_dmd_objects(dmd, log)
+                unrecognized_catalog = True
+                print("Catalog '%s' unrecognized - unable to scan" % (cli_options['catalog']))
+                log.error("CLI input '%s' doesn't match recognized catalogs" % (cli_options['catalog']))
+        else:
+        # Else scan for all catalogs in present_catalog_dict
+            for catalog in present_catalog_dict.keys():
+                any_issue = scan_catalog(catalog, present_catalog_dict[catalog], cli_options['fix'],
+                                         cli_options['cycles'], dmd, log) or any_issue
 
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),

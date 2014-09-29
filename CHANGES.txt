@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5.0
+--------------------
+ * Fixed ZEN-14586: Create zenindextool (break apart reIndex functionality from zencatalogscan)
+ * Fixed ZEN-14454: zenrelationscan won't execute like other toolbox tools
+
 0.4.0
 --------------------
  * Adding in an early alpha of zenrelationscan to the zenoss toolbox (for testing purposes)
