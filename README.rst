@@ -1,6 +1,6 @@
 zenoss.toolbox
 ==============
-*Current version: 0.4.0*
+*Current version: 0.5.0*
 
 Utilities for analyzing and debugging Zenoss environments.  
 
@@ -27,10 +27,10 @@ zencatalogscan
 
 zenrelationscan
 ---------------
-*An early drop (for testing purposes only) of a tool for replacing zenchkrels
+*Replacement for zenchkrels - please use zenrelationscan instead of zenchkrels going forward.  Documntation incoming.*
 
-zenreindextool
---------------
-*Unhappy with the name, but a tool with the logic from the old dmd.*.reIndex() calls from zencatalogscan
+zenindextool
+------------
+*Tool for performing dmd reIndex() calls, includes altReindex() for dmd.Devices*
 
 Author: Brian Bibeault (bbibeault@zenoss.com)
