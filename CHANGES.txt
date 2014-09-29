@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5.0
+--------------------
+ * 
+
+
 0.4.0
 --------------------
  * Adding in an early alpha of zenrelationscan to the zenoss toolbox (for testing purposes)

@@ -29,4 +29,8 @@ zenrelationscan
 ---------------
 *An early drop (for testing purposes only) of a tool for replacing zenchkrels
 
+zenreindextool
+--------------
+*Unhappy with the name, but a tool with the logic from the old dmd.*.reIndex() calls from zencatalogscan
+
 Author: Brian Bibeault (bbibeault@zenoss.com)
