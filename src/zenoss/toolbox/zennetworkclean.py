@@ -219,7 +219,7 @@ def parse_options():
     """Defines command-line options for script """
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans catalogs for broken references. WARNING: Before using with --fix \
+                                     description="Removes old unused ip addresses. WARNING: Before using with --fix \
                                          you must first confirm zodbscan, zenchkrels, and findposkeyerror return \
                                          clean. Additional instructions and information in Parature at \
                                          http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216")
@@ -239,8 +239,8 @@ def parse_options():
 
 
 def main():
-    '''Scans catalogs for broken references.  If --fix, attempts to remove broken references.
-       Builds list of available non-empty catalogs.  If --reindex, attempts dmd.reIndex().'''
+    '''Removes old unused ip addresses.  If --fix, attempts to remove old unused ip addresses.
+       Builds list of available non-empty catalogs.'''
 
     execution_start = time.time()
     cli_options = parse_options()
