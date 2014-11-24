@@ -1,6 +1,6 @@
 zenoss.toolbox
 ==============
-*Current version: 0.5.0*
+*Current version: 0.5.1*
 
 Utilities for analyzing and debugging Zenoss environments.  
 
@@ -32,5 +32,10 @@ zenrelationscan
 zenindextool
 ------------
 *Tool for performing dmd reIndex() calls, includes altReindex() for dmd.Devices*
+
+zennetworkclean
+---------------
+*Tool for removing old unused ip addresses/iprealms*
+
 
 Author: Brian Bibeault (bbibeault@zenoss.com)

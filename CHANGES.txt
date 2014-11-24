@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.5.1
+--------------------
+ * Fixed ZEN-13192: add tool to clean/remove old unused ip addresses/iprealmss
+
 0.5.0
 --------------------
  * Fixed ZEN-14586: Create zenindextool (break apart reIndex functionality from zencatalogscan)
