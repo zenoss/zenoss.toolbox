@@ -1,41 +1,43 @@
 zenoss.toolbox
 ==============
-*Current version: 0.5.1*
+*Current version: 0.5.2*
 
-Utilities for analyzing and debugging Zenoss environments.  
+Utilities for analyzing/debugging Zenoss environments as well as tools to increase/maintain performance.  
 
 *How do I Install and Use the zenoss.toolbox Package?*
- * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=201
+ * https://support.zenoss.com/hc/en-us/articles/203117595
 
 Tools Included
 ==============
 
-findposkeyerror
----------------
-*How do I use findposkeyerror to detect and fix POSKeyErrors in zodb?*
- * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213
-
 zodbscan
 --------
 *How do I use zodbscan to Scan zodb for Dangling References?*
- * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217
+ * https://support.zenoss.com/hc/en-us/articles/203118175
+
+findposkeyerror
+---------------
+*How do I use findposkeyerror to detect and fix POSKeyErrors in zodb?*
+ * https://support.zenoss.com/hc/en-us/articles/203117795
+
+zenrelationscan
+---------------
+*How do I use zenrelationscan to scan/fix ZenRelations*
+ * https://support.zenoss.com/hc/en-us/articles/203121165
 
 zencatalogscan
 --------------
 *How do I use zencatalogscan to detect and fix unresolvable object references in catalogs?*
- * http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216
-
-zenrelationscan
----------------
-*Replacement for zenchkrels - please use zenrelationscan instead of zenchkrels going forward.  Documntation incoming.*
+ * https://support.zenoss.com/hc/en-us/articles/203118075
 
 zenindextool
 ------------
-*Tool for performing dmd reIndex() calls, includes altReindex() for dmd.Devices*
+*How to use zenindextool to reindex top-level organizers*
+ * https://support.zenoss.com/hc/en-us/articles/203263689
 
 zennetworkclean
 ---------------
-*Tool for removing old unused ip addresses/iprealms*
-
+*How to use zennetworkclean to remove unused network information*
+ * https://support.zenoss.com/hc/en-us/articles/203263699
 
 Author: Brian Bibeault (bbibeault@zenoss.com)
