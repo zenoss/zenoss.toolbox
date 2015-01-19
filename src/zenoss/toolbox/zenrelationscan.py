@@ -218,8 +218,8 @@ def scan_relationships(attempt_fix, max_cycles, use_unlimited_memory, dmd, log, 
 def parse_options():
     """Defines and parses command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans ZenRelations for issues. Additional documentat at \
-                                                  https://support.zenoss.com/hc/en-us/articles/203121165")
+                                     description="Scans ZenRelations for issues. Additional documentat at "
+                                                  "https://support.zenoss.com/hc/en-us/articles/203121165")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")

@@ -391,8 +391,8 @@ def parse_options():
     'du -h /opt/zends/data/zodb'.  For a 20GB /opt/zends/data/zodb folder, I saw RAM usage of ~ 42GB"""
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans a zodb path for POSKeyErrors - addtional information \
-                                                 at https://support.zenoss.com/hc/en-us/articles/203117795")
+                                     description="Scans a zodb path for POSKeyErrors - addtional information "
+                                                 "at https://support.zenoss.com/hc/en-us/articles/203117795")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")

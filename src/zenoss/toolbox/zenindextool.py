@@ -141,8 +141,8 @@ def parse_options():
     """Defines command-line options for script """
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Reindexes top-level organizers. Documentation available at \
-                                     https://support.zenoss.com/hc/en-us/articles/203263689")
+                                     description="Reindexes top-level organizers. Documentation available at "
+                                     "https://support.zenoss.com/hc/en-us/articles/203263689")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
