@@ -1,6 +1,24 @@
 Changelog
 =========
 
+0.5.2
+--------------------
+ * Fixed ZEN-16133: First draft for the ZenDesk zennetworkclean document
+ * Fixed ZEN-16126: First draft for the ZenDesk zenindextool document
+ * Fixed ZEN-16108: Changes to the ZenDesk findposkeyerror document
+ * Fixed ZEN-16106: Changes to the ZenDesk zencatalogscan document
+ * Fixed ZEN-16104: Changes to the ZenDesk zodbscan document
+ * Fixed ZEN-16103: Changes to the ZenDesk toolbox overview document
+ * Fixed ZEN-16102: Changes to the ZenDesk zenrelationscan document
+ * Fixed ZEN-16092: Add copyright notice to all toolbox tools
+ * Fixed ZEN-16040: zennetworkclean has output message that refers to zencatalogscan
+ * Fixed ZEN-16039: zenindextool changes to call dmd._p_jar.sync()
+ * Fixed ZEN-16017: zencatalogscan has incorrect template catalog reference
+ * Fixed ZEN-15225: Add new catalogs to zencatalogscan
+ * Fixed ZEN-15082: zencatalogscan has incorrect mibsearch catalog
+ * Fixed ZEN-14953: Not all zenoss toolbox scripts use the zenoss user's python
+ * Fixed ZEN-14744: All tools need updated documentation links for the new ZenDesk 
+
 0.5.1
 --------------------
  * Fixed ZEN-13192: add tool to clean/remove old unused ip addresses/iprealmss

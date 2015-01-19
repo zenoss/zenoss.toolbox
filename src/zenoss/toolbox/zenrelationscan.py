@@ -1,7 +1,15 @@
-#!/usr/bin/env python
-#####################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "0.9.0"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "0.9.1"
 
 import argparse
 import datetime
@@ -210,7 +218,8 @@ def scan_relationships(attempt_fix, max_cycles, use_unlimited_memory, dmd, log, 
 def parse_options():
     """Defines and parses command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans zodb ZenRelations for issues.")
+                                     description="Scans ZenRelations for issues. Additional documentat at \
+                                                  https://support.zenoss.com/hc/en-us/articles/203121165")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -257,8 +266,8 @@ def main():
     log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
-        print("** WARNING ** Issues were detected - Consult KB article #223 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=223\n")
+        print("** WARNING ** Issues were detected - Consult KB article at")
+        print("      https://support.zenoss.com/hc/en-us/articles/203121165\n")
         sys.exit(1)
     else:
         sys.exit(0)

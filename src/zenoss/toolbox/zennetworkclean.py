@@ -1,7 +1,15 @@
-#!/usr/bin/env python
-#####################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "0.9.0"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "0.9.1"
 
 import argparse
 import datetime
@@ -219,10 +227,8 @@ def parse_options():
     """Defines command-line options for script """
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Removes old unused ip addresses. WARNING: Before using with --fix \
-                                         you must first confirm zodbscan, zenchkrels, and findposkeyerror return \
-                                         clean. Additional instructions and information in Parature at \
-                                         http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216")
+                                     description="Removes old unused ip addresses. Documentation available at \
+                                         https://support.zenoss.com/hc/en-us/articles/203263699")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -266,7 +272,7 @@ def main():
     # Output list of present catalogs to the UI, perform no further operations
         print "List of supported Zenoss catalogs to examine:\n"
         print "\n".join(present_catalog_dict.keys())
-        log.info("Zencatalogscan finished - list of supported catalogs output to CLI")
+        log.info("zennetworkclean finished - list of supported catalogs output to CLI")
     else:
     # Scan through catalog(s) depending on --catalog parameter
         if cli_options['catalog']:
@@ -298,3 +304,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

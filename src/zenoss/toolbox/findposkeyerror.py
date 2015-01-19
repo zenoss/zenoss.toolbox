@@ -1,7 +1,15 @@
-#!/opt/zenoss/bin/python
-#####################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "1.6.1"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "1.6.2"
 
 import abc
 import argparse
@@ -383,7 +391,8 @@ def parse_options():
     'du -h /opt/zends/data/zodb'.  For a 20GB /opt/zends/data/zodb folder, I saw RAM usage of ~ 42GB"""
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="scans a zodb path for POSKeyErrors")
+                                     description="Scans a zodb path for POSKeyErrors - addtional information \
+                                                 at https://support.zenoss.com/hc/en-us/articles/203117795")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -444,8 +453,8 @@ def main():
     log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
-        print("** WARNING ** Issues were detected - Consult KB article #213 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=213\n")
+        print("** WARNING ** Issues were detected - Consult KB article at")
+        print("      https://support.zenoss.com/hc/en-us/articles/203117795\n")
         sys.exit(1)
     else:
         sys.exit(0)

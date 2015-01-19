@@ -1,7 +1,15 @@
-#!/usr/bin/env python
-#####################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "1.0"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "1.0.1"
 
 import argparse
 import datetime
@@ -77,43 +85,52 @@ def inline_print(message):
     sys.stdout.write("\r%s" % (message))
     sys.stdout.flush()
 
+@transact
+def index_device(dev, dmd, log):
+    try:
+        notify(IndexingEvent(dev))
+        dev.index_object(noips=True)
+    except Exception as e:
+        log.exception(e)
+    for comp in dev.getDeviceComponentsNoIndexGen():
+        try:
+            notify(IndexingEvent(comp))
+            comp.index_object()
+        except Exception as e:
+            log.exception(e)
 
 def reindex_dmd_objects(name, type, dmd, log):
     try:
-        inline_print("[%s]  Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name.rjust(13)))
+        inline_print("[%s] Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
         if not (name == 'Devices'):
             object_reference = eval(type)
             object_reference.reIndex()
-            transaction.commit()
             print("finished")
             log.info("%s reIndex() completed successfully", name)
         else: # Special case for Devices, using method from altReindex ZEN-10793
             log.info("Reindexing Devices")
             output_count = 0
             for dev in dmd.Devices.getSubDevicesGen_recursive():
+                index_device(dev, dmd, log)
+                output_count += 1
+                dev._p_deactivate()
+                transaction.commit()
+                
                 if (output_count % 10) == 0:
+                    # sync after 10 devices
+                    dmd._p_jar.sync()
+                    
                     if (output_count % 100) == 0:
                         log.debug("Device Reindex has passed %d devices" % (output_count))
-                    inline_print("[%s]  Reindexing %s ... %8d devices processed" %
-                                 (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13), output_count))
-                try:
-                    notify(IndexingEvent(dev))
-                    dev.index_object(noips=True)
-                except Exception as e:
-                    log.exception(e)
-                for comp in dev.getDeviceComponentsNoIndexGen():
-                    try:
-                        notify(IndexingEvent(comp))
-                        comp.index_object()
-                    except Exception as e:
-                        log.exception(e)
-                output_count += 1
-                transaction.commit()
-                dev._p_deactivate()
-            inline_print("[%s]  Reindexing %s ... finished                                    " %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices".rjust(13)))
+                    inline_print("[%s] Reindexing %s ... %8d devices processed" %
+                                 (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices", output_count))
+                
+            inline_print("[%s] Reindexing %s ... finished                                    " %
+                         (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices"))
             print ""
             log.info("%d Devices reindexed successfully" % (output_count))
+        dmd._p_jar.sync()
+        transaction.commit()
     except Exception as e:
         print " FAILED  (check log file for details)"
         log.error("%s.reIndex() failed" % (name))
@@ -124,10 +141,8 @@ def parse_options():
     """Defines command-line options for script """
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans catalogs for broken references. WARNING: Before using with --fix \
-                                         you must first confirm zodbscan, zenchkrels, and findposkeyerror return \
-                                         clean. Additional instructions and information in Parature at \
-                                         http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216")
+                                     description="Reindexes top-level organizers. Documentation available at \
+                                     https://support.zenoss.com/hc/en-us/articles/203263689")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -140,12 +155,11 @@ def parse_options():
 
 
 def main():
-    '''Scans catalogs for broken references.  If --fix, attempts to remove broken references.
-       Builds list of available non-empty catalogs.  If --reindex, attempts dmd.reIndex().'''
+    '''Performs reindex call on different DMD categories (used to be a part of zencatalogscan)'''
 
     execution_start = time.time()
     cli_options = parse_options()
-    log = configure_logging('zenreindextool')
+    log = configure_logging('zenindextool')
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
@@ -185,7 +199,7 @@ def main():
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),
                                                  datetime.timedelta(seconds=int(time.time() - execution_start))))
-    log.info("zenreindextool completed in %1.2f seconds" % (time.time() - execution_start))
+    log.info("zenindextool completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
 
 

@@ -1,7 +1,15 @@
-#!/opt/zenoss/bin/python
-########################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "1.0.0"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "1.0.1"
 
 import Globals
 import argparse
@@ -362,7 +370,8 @@ Refers to a missing object:
 def parse_options():
     """Defines command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans zodb/zodb_session for dangling references")
+                                     description="Scans zodb for dangling references. Additional documentation at \
+                                                  https://support.zenoss.com/hc/en-us/articles/203118175")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -399,8 +408,8 @@ def main():
     log.info("############################################################")
 
     if (number_of_issues.value() > 0):
-        print("** WARNING ** Dangling Reference(s) were detected - Consult KB article #217 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=217\n")
+        print("** WARNING ** Dangling Reference(s) were detected - Consult KB article at")
+        print("      https://support.zenoss.com/hc/en-us/articles/203118175\n")
         sys.exit(1)
     else:
         sys.exit(0)
