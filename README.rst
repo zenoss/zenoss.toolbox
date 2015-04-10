@@ -1,6 +1,6 @@
 zenoss.toolbox
 ==============
-*Current version: 0.5.2*
+*Current version: 0.6.0*
 
 Utilities for analyzing/debugging Zenoss environments as well as tools to increase/maintain performance.  
 
@@ -39,5 +39,10 @@ zennetworkclean
 ---------------
 *How to use zennetworkclean to remove unused network information*
  * https://support.zenoss.com/hc/en-us/articles/203263699
+
+zencheckdebstats
+----------------
+*How to use zencheckdbstats to gather DB performance statistics*
+ * TBD
 
 Author: Brian Bibeault (bbibeault@zenoss.com)

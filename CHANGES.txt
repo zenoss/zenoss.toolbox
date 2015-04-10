@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.6.0
+--------------------
+ * Fixed ZEN-17179: Create toolbox tool for zencheckdbstats
+
 0.5.2
 --------------------
  * Fixed ZEN-16133: First draft for the ZenDesk zennetworkclean document
