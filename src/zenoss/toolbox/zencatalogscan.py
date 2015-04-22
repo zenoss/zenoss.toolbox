@@ -1,7 +1,15 @@
-#!/usr/bin/env python
-#####################
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
-scriptVersion = "1.2.0"
+#!/opt/zenoss/bin/python
+
+scriptVersion = "1.2.1"
 
 import argparse
 import datetime
@@ -186,14 +194,16 @@ def build_catalog_dict(dmd, log):
         'CloudStack.SystemVMCatalog': 'dmd.Devices.CloudStack.SystemVMCatalog',
         'CloudStack.VirtualMachineCatalog': 'dmd.Devices.CloudStack.VirtualMachineCatalog',
         'Devices.deviceSearch': 'dmd.Devices.deviceSearch',
-        'Devices.rrdtemplatesearch': 'dmd.Devices.rrdtemplatesearch',
+        'Devices.searchRRDTemplates': 'dmd.Devices.searchRRDTemplates',
         'Events.eventClassSearch': 'dmd.Events.eventClassSearch',
         'global_catalog': 'dmd.global_catalog',
+        'HP.Proliant.deviceSearch': 'dmd.Devices.Server.HP.Proliant.deviceSearch',
         'IPv6Networks.ipSearch': 'dmd.IPv6Networks.ipSearch',
         'JobManager.job_catalog': 'dmd.JobManager.job_catalog',
+        'Layer2.macs_catalog': 'dmd.Devices.macs_catalog',
         'maintenanceWindowSearch': 'dmd.maintenanceWindowSearch',
         'Manufacturers.productSearch': 'dmd.Manufacturers.productSearch',
-        'Mibs.mibsearch': 'dmd.Mibs.mibsearch',
+        'Mibs.mibSearch': 'dmd.Mibs.mibSearch',
         'Networks.ipSearch': 'dmd.Networks.ipSearch',
         'Services.serviceSearch': 'dmd.Services.serviceSearch',
         'Storage.iqnCatalog': 'dmd.Devices.Storage.iqnCatalog',
@@ -235,10 +245,10 @@ def parse_options():
     """Defines command-line options for script """
 
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans catalogs for broken references. WARNING: Before using with --fix \
-                                         you must first confirm zodbscan, zenchkrels, and findposkeyerror return \
-                                         clean. Additional instructions and information in Parature at \
-                                         http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216")
+                                     description="Scans catalogs for broken references. WARNING: Before using with --fix "
+                                         "you must first confirm zodbscan, findposkeyerror, and zenrelationscan return "
+                                         "clean. Documentation at "
+                                         "https://support.zenoss.com/hc/en-us/articles/203118075")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
@@ -307,8 +317,8 @@ def main():
     log.info("############################################################")
 
     if any_issue and not cli_options['fix']:
-        print("** WARNING ** Issues were detected - Consult KB article #216 at")
-        print("      http://support.zenoss.com/ics/support/KBAnswer.asp?questionID=216\n")
+        print("** WARNING ** Issues were detected - Consult KB article at")
+        print("      https://support.zenoss.com/hc/en-us/articles/203118075\n")
         sys.exit(1)
     else:
         sys.exit(0)
