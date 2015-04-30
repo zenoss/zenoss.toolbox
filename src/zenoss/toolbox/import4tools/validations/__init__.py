@@ -1,11 +1,23 @@
-#!/opt/zenoss/bin/python
-
-# This module contains the validations to be run by the import4validations
-# module.
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
 
 import logging
+
 log = logging.getLogger(__name__)
 
+# Whenever a validation is created, it's class needs to be added to this list
+__all__ = [
+    'ValidationException',
+    'Import4Validation',
+
+    'ZenPackValidation'
+]
 
 class ValidationException(Exception):
     pass
@@ -50,25 +62,12 @@ class Import4Validation(object):
 
     def validate(self, argz):
         """
-        The validation that your validator will do.
+        The validation that your validator will do.  To signal a failure slash
+        invalid scenario slash something needs to be fixed, raise a ValidationException
+        to validate's caller.  It is expected that any error logging is done
+        by the implementor.
 
         :param argz: Arguments from a call to ArgumentParser.parse_args()
+        :raises ValidationException: validation failed
         """
         raise NotImplementedException()
-
-
-class ZenPackValidation(Import4Validation):
-    """
-    Validate that installed zenpacks are going to be compatible for
-    export/import to a 5.x system
-    """
-
-    @staticmethod
-    def _add_parser(subparsers):
-        parser = subparsers.add_parser('zenpack',
-                                       description='Run validations against ' +
-                                       'currently installed/available zenpacks')
-        return parser
-
-    def validate(self, argz):
-        pass

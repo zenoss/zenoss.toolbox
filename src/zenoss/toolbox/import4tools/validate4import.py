@@ -1,8 +1,19 @@
+##############################################################################
+#
+# Copyright (C) Zenoss, Inc. 2014-2015, all rights reserved.
+#
+# This content is made available according to terms specified in
+# License.zenoss under the directory where your Zenoss product is installed.
+#
+##############################################################################
+
 #!/opt/zenoss/bin/python
 
+scriptVersion = "0.9"
+
 # This script is the main entrypoint for validation code.  To add a validation
-# to this process, subclass Import4Validation in the validations module and
-# import it here
+# to this process, subclass Import4Validation in the validations library and
+# add it to the validation library's `__all__` attribute
 
 from validations import *
 
@@ -30,11 +41,11 @@ class ValidationRunner(object):
             self.vTask.validate(self.argz)
             log.info("Validation successful")
             return 0
+        except ValidationException:
+            log.error("Validation failed")
         except Exception as e:
             log.exception(e)
-            log.error("Validation failed")
-            return -1
-
+        return 1
 
 def setup_parser(validationSubs):
     parser = ArgumentParser(
