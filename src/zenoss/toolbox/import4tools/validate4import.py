@@ -15,13 +15,14 @@ scriptVersion = "0.9"
 # to this process, subclass Import4Validation in the validations library and
 # add it to the validation library's `__all__` attribute
 
+from . import setupLogger
 from validations import *
 
 from argparse import ArgumentParser
 import sys
 import logging
 
-log = logging.getLogger(__name__)
+log = setupLogger(__name__)
 
 
 class ValidationRunner(object):

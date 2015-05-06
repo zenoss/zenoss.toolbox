@@ -7,16 +7,17 @@
 #
 ##############################################################################
 
-import logging
+from .. import setupLogger
 
-log = logging.getLogger(__name__)
+log = setupLogger(__name__)
 
 # Whenever a validation is created, it's class needs to be added to this list
 __all__ = [
     'ValidationException',
     'Import4Validation',
 
-    'ZenPackValidation'
+    'ZenPackValidation',
+    'ImpactValidation'
 ]
 
 class ValidationException(Exception):

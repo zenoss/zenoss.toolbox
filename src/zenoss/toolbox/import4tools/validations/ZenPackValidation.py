@@ -10,6 +10,7 @@
 #!/opt/zenoss/bin/python
 
 from . import Import4Validation, ValidationException
+from .. import setupLogger
 
 import Globals
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
@@ -18,9 +19,8 @@ from pkg_resources import parse_version
 import os
 import inspect
 import json
-import logging
 
-log = logging.getLogger(__name__)
+log = setupLogger(__name__)
 
 MANIFEST_FILE = 'packmanifest.json'
 
