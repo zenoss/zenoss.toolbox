@@ -11,8 +11,14 @@ import logging
 import sys
 
 
+def setupLogger(loggerName):
+    log = logging.getLogger(loggerName)
+    log.setLevel(logging.INFO)
+    return log
+
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s: %(message)s')
-log = logging.getLogger(__name__)
+
+log = setupLogger(__name__)
