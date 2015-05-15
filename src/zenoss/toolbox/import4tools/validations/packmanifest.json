@@ -18,7 +18,7 @@
         }, 
         "ZenPacks.zenoss.FtpMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.BrocadeMonitor": {
             "min4xVersion": null, 
@@ -42,11 +42,11 @@
         }, 
         "ZenPacks.zenoss.WebsphereMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.vCloud": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.PythonCollector": {
             "min4xVersion": null, 
@@ -86,7 +86,7 @@
         }, 
         "ZenPacks.zenoss.HpuxMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.Dashboard": {
             "min4xVersion": null, 
@@ -106,11 +106,11 @@
         }, 
         "ZenPacks.zenoss.NtpMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.NNTPMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.BigIpMonitor": {
             "min4xVersion": null, 
@@ -118,7 +118,7 @@
         }, 
         "ZenPacks.zenoss.ZenHoltWinters": {
             "min4xVersion": null, 
-            "status": "WARN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.NetAppMonitor": {
             "min4xVersion": null, 
@@ -166,7 +166,7 @@
         }, 
         "ZenPacks.zenoss.ZenWebTx": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.EnterpriseCollector": {
             "min4xVersion": null, 
@@ -202,7 +202,7 @@
         }, 
         "ZenPacks.zenoss.WebLogicMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.AWS": {
             "min4xVersion": null, 
@@ -226,7 +226,7 @@
         }, 
         "ZenPacks.zenoss.ZenMailTx": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.CalculatedPerformance": {
             "min4xVersion": null, 
@@ -238,23 +238,23 @@
         }, 
         "ZenPacks.zenoss.NetScreenMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.DellMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.ZenSQLTx": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.CiscoUCS": {
             "min4xVersion": null, 
-            "status": "WARN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.JabberMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.EnterpriseLinux": {
             "min4xVersion": null, 
@@ -278,7 +278,7 @@
         }, 
         "ZenPacks.zenoss.OpenStackInfrastructure": {
             "min4xVersion": null, 
-            "status": "WARN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.WebScale": {
             "min4xVersion": null, 
@@ -290,7 +290,7 @@
         }, 
         "ZenPacks.zenoss.ZenJMX": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.EnterpriseSkin": {
             "min4xVersion": null, 
@@ -302,15 +302,15 @@
         }, 
         "ZenPacks.zenoss.CheckPointMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.HPMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.DigMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.StorageBase": {
             "min4xVersion": null, 
@@ -350,11 +350,11 @@
         }, 
         "ZenPacks.zenoss.IRCDMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.NortelMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.Dell.PowerEdge": {
             "min4xVersion": null, 
@@ -362,7 +362,7 @@
         }, 
         "ZenPacks.zenoss.LDAPMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.DiscoveryMapping": {
             "min4xVersion": null, 
@@ -382,7 +382,7 @@
         }, 
         "ZenPacks.zenoss.DnsMonitor": {
             "min4xVersion": null, 
-            "status": "UNKNOWN"
+            "status": "OK"
         }, 
         "ZenPacks.zenoss.DeviceSearch": {
             "min4xVersion": null, 

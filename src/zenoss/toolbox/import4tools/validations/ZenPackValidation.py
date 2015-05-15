@@ -80,12 +80,7 @@ class ZenPackValidation(Import4Validation):
         }
 
         def _getManifestPack(packName, manifestPacks=manifestPacks):
-            result = None
-            for manifestPack in manifestPacks:
-                if packName == manifestPack['name']:
-                    result = manifestPack
-                    break
-            return result
+            return manifestPacks.get(packName, None)
 
         for pack in installedPacks:
             manifestPack = _getManifestPack(pack.id)
