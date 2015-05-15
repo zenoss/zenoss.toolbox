@@ -1,499 +1,396 @@
 {
-    "packs": [
-        {
+    "packs": {
+        "ZenPacks.zenoss.Licensing": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.AdvancedSearch", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.PostGreSQL": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.AuditLog", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.VMwareESXMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.AutoTune", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.CatalogService", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Dashboard", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DeviceSearch", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Diagram", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DiscoveryMapping", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DistributedCollector", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DynamicView", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EnterpriseCollector", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EnterpriseReports", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EnterpriseSecurity", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EnterpriseSkin", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.Zenoss.GOM", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.CatalogService": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Impact", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.FtpMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ImpactServer", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Import4", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.LDAPAuthenticator", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Licensing", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.MultiRealmIP", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.BrocadeMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.PortalIntegration", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.TomcatMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.UCSCapacity", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.Microsoft.Azure": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.UCSXSkin", 
             "status": "OK"
         }, 
-        {
+        "Zenpacks.zenoss.ZenPerfETL": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.WebScale", 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.Zenoss.GOM": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.WebsphereMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.vCloud": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.PythonCollector": {
+            "min4xVersion": null, 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.Impact": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenDeviceACL", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.Import4": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenHoltWinters", 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.XenMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.ApacheMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.IBM.Power": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.ImpactServer": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.EnterpriseReports": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.ControlCenter": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.HpuxMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.Dashboard": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Microsoft.HyperV": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.SugarCRMMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.MySqlMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.NtpMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.NNTPMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.BigIpMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.ZenHoltWinters": {
+            "min4xVersion": null, 
             "status": "WARN"
         }, 
-        {
+        "ZenPacks.zenoss.NetAppMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenOperatorRole", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.XenServer": {
             "min4xVersion": null, 
-            "name": "----- SOLUTIONS-----", 
-            "status": ""
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.AixMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.DatabaseMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ApacheMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.ZooKeeper": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.AWS", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.HttpMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.BigIpMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.LinuxMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.BrocadeMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.PortalIntegration": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.CalculatedPerformance", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.EMC.base": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.CheckPointMonitor", 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.HP.Proliant": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.ZenOperatorRole": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.DB2": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.ZenWebTx": {
+            "min4xVersion": null, 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.EnterpriseCollector": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.CiscoMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.DistributedCollector": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.CiscoUCS", 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Microsoft.Windows": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.AdvancedSearch": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Microsoft.Lync": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Diagram": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Hadoop": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.WBEM": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.WebLogicMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.AWS": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.MultiRealmIP": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.UCSXSkin": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.CiscoMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.EsxTop": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.ZenMailTx": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.CalculatedPerformance": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.AuditLog": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.NetScreenMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.DellMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.ZenSQLTx": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.CiscoUCS": {
+            "min4xVersion": null, 
             "status": "WARN"
         }, 
-        {
+        "ZenPacks.zenoss.JabberMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ControlCenter", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DatabaseMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DB2", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Dell.PowerEdge", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DellMonitor", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.EnterpriseLinux": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DigMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.DnsMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EMC.base", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.SolarisMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EnterpriseLinux", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.NeScaler": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.EsxTop", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.FtpMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Hadoop", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.ZenDeviceACL": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.HBase", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.JBossMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.HP.Proliant", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.OpenStackInfrastructure": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.HPMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.HpuxMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.HttpMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.IBM.Power", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.IRCDMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.JabberMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.JBossMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.JuniperMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Layer2", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.LDAPMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.LinuxMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Microsoft.Azure", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Microsoft.HyperV", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Microsoft.Lync", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.Microsoft.Windows", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.MySqlMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NeScaler", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NetAppMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NetScreenMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NNTPMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NortelMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.NtpMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.OpenStackInfrastructure", 
             "status": "WARN"
         }, 
-        {
+        "ZenPacks.zenoss.WebScale": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.PostGreSQL", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.ZenossVirtualHostMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.PropertyMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.PythonCollector", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.RANCIDIntegrator", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.ZenJMX": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.SolarisMonitor", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.StorageBase", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.SugarCRMMonitor", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.EnterpriseSkin": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.TomcatMonitor", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.RANCIDIntegrator": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.vCloud", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.CheckPointMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.VMwareESXMonitor", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.HPMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.DigMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.StorageBase": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.AutoTune": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.PropertyMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.JuniperMonitor": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.WSMAN": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.LDAPAuthenticator": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.HBase": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.UCSCapacity": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.Layer2": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.IRCDMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.NortelMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.Dell.PowerEdge": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.LDAPMonitor": {
+            "min4xVersion": null, 
+            "status": "UNKNOWN"
+        }, 
+        "ZenPacks.zenoss.DiscoveryMapping": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.DynamicView": {
+            "min4xVersion": null, 
+            "status": "OK"
+        }, 
+        "ZenPacks.zenoss.vSphere": {
             "min4xVersion": "3.1.0", 
-            "name": "ZenPacks.zenoss.vSphere", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.AixMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.WBEM", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.DnsMonitor": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.WebLogicMonitor", 
             "status": "UNKNOWN"
         }, 
-        {
+        "ZenPacks.zenoss.DeviceSearch": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.WebsphereMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.WSMAN", 
             "status": "OK"
         }, 
-        {
+        "ZenPacks.zenoss.EnterpriseSecurity": {
             "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.XenMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.XenServer", 
             "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenJMX", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenMailTx", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenossVirtualHostMonitor", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenSQLTx", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZenWebTx", 
-            "status": "UNKNOWN"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "ZenPacks.zenoss.ZooKeeper", 
-            "status": "OK"
-        }, 
-        {
-            "min4xVersion": null, 
-            "name": "Zenpacks.zenoss.ZenPerfETL", 
-            "status": "UNKNOWN"
         }
-    ]
+    }
 }
