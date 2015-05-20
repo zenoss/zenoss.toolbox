@@ -82,7 +82,7 @@ def get_collector_list():
         collector_file.close()
     try:
         with open(collector_file.name, 'r') as f:
-            collector_list = [l.strip() for l in f.readlines()]
+            collector_list = [l.strip() for l in f.readlines() if l.count(',') == 2]
     finally:
         os.unlink(collector_file.name)
     return collector_list
