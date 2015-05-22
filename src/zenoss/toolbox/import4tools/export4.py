@@ -53,6 +53,11 @@ for collector in colldict.values():
     print ','.join([collector.hub().id, collector.id, collector.hostname])
 '''
 
+uuid_dmd = '''
+print dmd.uuid
+'''
+dmd_uuid_filename = 'dmd_uuid.txt'
+
 def run_dmd(script_text, output_file):
     script_file = tempfile.NamedTemporaryFile(delete=False, dir=os.getcwd())
     try:
@@ -141,8 +146,14 @@ def export_component_list(components_filename):
     print 'component list exported'
 
 
+def export_dmduuid():
+    with open(os.path.join(os.getcwd(), dmd_uuid_filename), 'w') as fp:
+        run_dmd(uuid_dmd, fp)
+    print 'dmd uuid exported'
+
+
 def make_export_tar(args, components_filename, remote_backups, master_backup_path):
-    tarcmd = ['tar', 'cf', args.filename, components_filename]
+    tarcmd = ['tar', 'cf', args.filename, components_filename, dmd_uuid_filename]
     tarcmd.extend(remote_backups)
     tar_result = subprocess.call(tarcmd)
     if tar_result is not 0:
@@ -164,6 +175,7 @@ def main():
     master_backup = backup_master(backup_dir, args)
     components_filename = 'componentList.txt'
     export_component_list(components_filename)
+    export_dmduuid()
     make_export_tar(args, components_filename, remote_backups, master_backup)
 
 if __name__ == '__main__':
