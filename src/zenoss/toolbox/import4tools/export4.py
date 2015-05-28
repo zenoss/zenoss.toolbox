@@ -18,44 +18,14 @@ import subprocess
 import sys
 import tempfile
 
-list_components_dmd = '''
-import sys
-devcount = 0
-for dev in dmd.Devices.getSubDevices():
-    print '### components for %s' % '/'.join(dev.getPrimaryPath())
-    for comp in dev.getMonitoredComponents():
-        print '/'.join(comp.getPrimaryPath())
-    devcount = devcount + 1
-    if devcount % 100 is 0:
-        sys.stderr.write('exported 100 devices\\n')
+import Globals
+from Products.ZenUtils.Utils import unused
+unused(Globals)
+from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 
-sys.stderr.write('a total of %d devices in export\\n' % devcount)
-'''
+dmd = ZenScriptBase(noopts=True, connect=True).dmd
 
-get_remote_collector_hostnames_dmd = '''
-import sys
-if not hasattr(dmd.Monitors, 'Hub'):
-    sys.stderr.write('Not using distributed collectors.\\n')
-    sys.exit(0)
-colldict = {}
-for hub in dmd.Monitors.Hub.objectSubValues():
-    for collector in hub.collectors():
-        if collector.isLocalHost():
-            continue
-        if colldict.has_key(collector.hostname):
-            sys.stderr.write('collector %s shares a hostname with collector %s, skipping duplicate.\\n' % (collector.id, colldict[collector.hostname].id))
-            continue
-        colldict[collector.hostname] = collector
-if not colldict:
-    sys.stderr.write('All collectors are local.\\n')
-    sys.exit(0)
-for collector in colldict.values():
-    print ','.join([collector.hub().id, collector.id, collector.hostname])
-'''
 
-uuid_dmd = '''
-print dmd.uuid
-'''
 dmd_uuid_filename = 'dmd_uuid.txt'
 
 def run_dmd(script_text, output_file):
@@ -80,17 +50,28 @@ def parse_arguments(thetime):
 
 
 def get_collector_list():
-    collector_file = tempfile.NamedTemporaryFile(delete=False, dir=os.getcwd())
-    try:
-        run_dmd(get_remote_collector_hostnames_dmd, collector_file)
-    finally:
-        collector_file.close()
-    try:
-        with open(collector_file.name, 'r') as f:
-            collector_list = [l.strip() for l in f.readlines() if l.count(',') == 2]
-    finally:
-        os.unlink(collector_file.name)
-    return collector_list
+    if not hasattr(dmd.Monitors, 'Hub'):
+        print 'Not using distributed collectors.'
+        return []
+    colldict = {}
+    for hub in dmd.Monitors.Hub.objectSubValues():
+        for collector in hub.collectors():
+            if collector.isLocalHost():
+                continue
+            if colldict.has_key(collector.hostname):
+                print 'collector %s shares a hostname with collector %s, skipping duplicate.' % (collector.id, colldict[collector.hostname].id)
+                continue
+            colldict[collector.hostname] = collector
+    if not colldict:
+        print 'All collectors are local.'
+        return []
+    collectors = []
+    for coll in colldict.itervalues():
+        if '' in (coll.hub().id, coll.id, coll.hostname):
+            print 'skipping %s because information is missing (one of [hubID/collectorID/collectorHostname]): %s' % (coll.id, [coll.hub().id, coll.id, coll.hostname])
+            continue
+        collectors.append(','.join([collector.hub().id, collector.id, collector.hostname]))
+    return collectors
 
 
 def backup_remote_collectors(args, thetime, backup_dir):
@@ -137,18 +118,22 @@ def backup_master(backup_dir, args):
 
 def export_component_list(components_filename):
     print 'exporting component list ...'
-    components_fn = os.path.join(os.getcwd(), components_filename)
-    components_file = open(components_fn, 'w')
-    try:
-        run_dmd(list_components_dmd, components_file)
-    finally:
-        components_file.close()
+    devcount = 0
+    with open(components_filename, 'w') as fp:
+        for dev in dmd.Devices.getSubDevices():
+            fp.write('### components for %s' % '/'.join(dev.getPrimaryPath()) + '\n')
+            for comp in dev.getMonitoredComponents():
+                fp.write('/'.join(comp.getPrimaryPath()) + '\n')
+            devcount += 1
+            if devcount % 100 is 0:
+                print 'exported 100 devices'
+    print 'a total of %d devices in export' % devcount
     print 'component list exported'
 
 
 def export_dmduuid():
-    with open(os.path.join(os.getcwd(), dmd_uuid_filename), 'w') as fp:
-        run_dmd(uuid_dmd, fp)
+    with open(dmd_uuid_filename, 'w') as fp:
+        fp.write(dmd.uuid + '\n')
     print 'dmd uuid exported'
 
 
