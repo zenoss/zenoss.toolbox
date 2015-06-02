@@ -28,6 +28,7 @@ dmd = ZenScriptBase(noopts=True, connect=True).dmd
 
 dmd_uuid_filename = 'dmd_uuid.txt'
 
+
 def run_dmd(script_text, output_file):
     script_file = tempfile.NamedTemporaryFile(delete=False, dir=os.getcwd())
     try:
@@ -137,9 +138,11 @@ def export_dmduuid():
     print 'dmd uuid exported'
 
 
-def make_export_tar(args, components_filename, remote_backups, master_backup_path):
+def make_export_tar(args, components_filename, remote_backups, master_backup_path, flexera_dir):
     tarcmd = ['tar', 'cf', args.filename, components_filename, dmd_uuid_filename]
     tarcmd.extend(remote_backups)
+    if os.path.isdir(flexera_dir):
+        tarcmd.extend(flexera_dir)
     tar_result = subprocess.call(tarcmd)
     if tar_result is not 0:
         print 'failed to create tarfile'
@@ -152,16 +155,18 @@ def make_export_tar(args, components_filename, remote_backups, master_backup_pat
         sys.exit(tar_result)
     print 'export successful. file is %s' % export_fn
 
+
 def main():
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     args = parse_arguments(thetime)
     backup_dir = os.path.join(os.environ['ZENHOME'], 'backups')
+    flexera_dir = os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
     remote_backups = backup_remote_collectors(args, thetime, backup_dir)
     master_backup = backup_master(backup_dir, args)
     components_filename = 'componentList.txt'
     export_component_list(components_filename)
     export_dmduuid()
-    make_export_tar(args, components_filename, remote_backups, master_backup)
+    make_export_tar(args, components_filename, remote_backups, master_backup, flexera_dir)
 
 if __name__ == '__main__':
     main()
