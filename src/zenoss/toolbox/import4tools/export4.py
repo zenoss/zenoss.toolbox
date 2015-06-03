@@ -141,14 +141,22 @@ def export_dmduuid():
 def make_export_tar(args, components_filename, remote_backups, master_backup_path, flexera_dir):
     tarcmd = ['tar', 'cf', args.filename, components_filename, dmd_uuid_filename]
     tarcmd.extend(remote_backups)
-    if os.path.isdir(flexera_dir):
-        tarcmd.extend(flexera_dir)
+
     tar_result = subprocess.call(tarcmd)
     if tar_result is not 0:
         print 'failed to create tarfile'
         sys.exit(tar_result)
-    backup_split = os.path.split(master_backup_path)
+
     export_fn = os.path.join(os.getcwd(), args.filename)
+
+    if os.path.isdir(flexera_dir):
+        fl_dir=os.path.split(flexera_dir)
+        tar_result = subprocess.call(['tar', '-C', fl_dir[0], '-rf', export_fn, fl_dir[1]])
+        if tar_result is not 0:
+            print 'failed to create tarfile'
+            sys.exit(tar_result)
+
+    backup_split = os.path.split(master_backup_path)
     tar_result = subprocess.call(['tar', '-C', backup_split[0], '-uf', export_fn, backup_split[1]])
     if tar_result is not 0:
         print 'failed to add backup to tarfile'
@@ -159,7 +167,11 @@ def make_export_tar(args, components_filename, remote_backups, master_backup_pat
 def main():
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     args = parse_arguments(thetime)
+
     backup_dir = os.path.join(os.environ['ZENHOME'], 'backups')
+    if not os.path.isdir(backup_dir):
+        os.makedirs(backup_dir)
+
     flexera_dir = os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
     remote_backups = backup_remote_collectors(args, thetime, backup_dir)
     master_backup = backup_master(backup_dir, args)
