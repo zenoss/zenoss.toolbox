@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import shutil
 
 import Globals
 from Products.ZenUtils.Utils import unused
@@ -24,22 +25,14 @@ from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 
 
 class Config:
-    tmp_dir =               '/tmp'
-    dmd_uuid_filename =     '/tmp/dmd_uuid.txt'
-    components_filename =   '/tmp/componentList.txt'
+    tmp_dir =               tempfile.mkdtemp()
+    dmd_uuid_filename =     tmp_dir + '/dmd_uuid.txt'
+    components_filename =   tmp_dir + '/componentList.txt'
+    backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
+    flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
 
 
 dmd = ZenScriptBase(noopts=True, connect=True).dmd
-
-
-def run_dmd(script_text, output_file):
-    script_file = tempfile.NamedTemporaryFile(delete=False, dir=Config.tmp_dir)
-    try:
-        script_file.write(script_text)
-        script_file.close()
-        subprocess.call(['zendmd', '--script=%s' % script_file.name], stdout=output_file, stdin=subprocess.PIPE, stderr=None)
-    finally:
-        os.unlink(script_file.name)
 
 
 def parse_arguments(thetime):
@@ -182,17 +175,19 @@ def main():
         print 'Cannot open %s! please check accessibility ...' % tar_file
         sys.exit(1)
 
-    backup_dir = os.path.join(os.environ['ZENHOME'], 'backups')
-    if not os.path.isdir(backup_dir):
-        os.makedirs(backup_dir)
+    if not os.path.isdir(Config.backup_dir):
+        os.makedirs(Config.backup_dir)
 
-    flexera_dir = os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
-    remote_backups = backup_remote_collectors(args, thetime, backup_dir)
-    master_backup = backup_master(backup_dir, args)
+    remote_backups = backup_remote_collectors(args, thetime, Config.backup_dir)
+    master_backup = backup_master(Config.backup_dir, args)
 
     export_component_list()
     export_dmduuid()
-    make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, flexera_dir)
+    make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
+
+    # cleanup the temp dir
+    shutil.rmtree(Config.tmp_dir)
+
 
 if __name__ == '__main__':
     main()
