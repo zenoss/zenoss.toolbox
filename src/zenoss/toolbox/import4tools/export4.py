@@ -26,32 +26,35 @@ from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 
 class Config:
     tmp_dir =               tempfile.mkdtemp()
-    dmd_uuid_filename =     tmp_dir + '/dmd_uuid.txt'
-    components_filename =   tmp_dir + '/componentList.txt'
+    dmd_uuid_filename =     os.path.join(tmp_dir, 'dmd_uuid.txt')
+    components_filename =   os.path.join(tmp_dir, 'componentList.txt')
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
 
 
-dmd = ZenScriptBase(noopts=True, connect=True).dmd
+class GL:
+    dmd = 0
+    args = 0
 
 
 def parse_arguments(thetime):
     parser = argparse.ArgumentParser(description="4.x export script")
     default_export_filename = '4x-export-%s.tar' % thetime
     parser.add_argument('-f', '--filename', help='specify name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=default_export_filename)
-    parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_const', const=1)
-    parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_const', const=1)
-    parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_const', const=1)
-    args = parser.parse_args()
-    return args
+    parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
+    parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
+    parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_true', default=False)
+    parser.add_argument('-d', '--debug', help="debug mode", action='store_true', default=False)
+    GL.args = parser.parse_args()
+    return GL.args
 
 
 def get_collector_list():
-    if not hasattr(dmd.Monitors, 'Hub'):
+    if not hasattr(GL.dmd.Monitors, 'Hub'):
         print 'Not using distributed collectors.'
         return []
     colldict = {}
-    for hub in dmd.Monitors.Hub.objectSubValues():
+    for hub in GL.dmd.Monitors.Hub.objectSubValues():
         for collector in hub.collectors():
             if collector.isLocalHost():
                 continue
@@ -117,7 +120,7 @@ def export_component_list():
     print 'exporting component list ...'
     devcount = 0
     with open(Config.components_filename, 'w') as fp:
-        for dev in dmd.Devices.getSubDevices():
+        for dev in GL.dmd.Devices.getSubDevices():
             fp.write('### components for %s' % '/'.join(dev.getPrimaryPath()) + '\n')
             for comp in dev.getMonitoredComponents():
                 fp.write('/'.join(comp.getPrimaryPath()) + '\n')
@@ -130,7 +133,7 @@ def export_component_list():
 
 def export_dmduuid():
     with open(Config.dmd_uuid_filename, 'w') as fp:
-        fp.write(dmd.uuid + '\n')
+        fp.write(GL.dmd.uuid + '\n')
     print 'dmd uuid exported'
 
 
@@ -178,6 +181,8 @@ def main():
     if not os.path.isdir(Config.backup_dir):
         os.makedirs(Config.backup_dir)
 
+    GL.dmd = ZenScriptBase(noopts=True, connect=True).dmd
+
     remote_backups = backup_remote_collectors(args, thetime, Config.backup_dir)
     master_backup = backup_master(Config.backup_dir, args)
 
@@ -185,9 +190,12 @@ def main():
     export_dmduuid()
     make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
 
+
+try:
+    if __name__ == '__main__':
+        main()
+
+finally:
     # cleanup the temp dir
-    shutil.rmtree(Config.tmp_dir)
-
-
-if __name__ == '__main__':
-    main()
+    if not GL.args.debug:
+        shutil.rmtree(Config.tmp_dir)
