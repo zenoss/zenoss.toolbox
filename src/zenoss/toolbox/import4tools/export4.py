@@ -1,3 +1,4 @@
+#!/opt/zenoss/bin/python
 ##############################################################################
 #
 # Copyright (C) Zenoss, Inc. 2015, all rights reserved.
@@ -7,8 +8,6 @@
 #
 ##############################################################################
 
-#!/opt/zenoss/bin/python
-
 scriptVersion = "0.9"
 
 import argparse
@@ -17,48 +16,49 @@ import os
 import subprocess
 import sys
 import tempfile
+import shutil
 
 import Globals
 from Products.ZenUtils.Utils import unused
 unused(Globals)
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 
-dmd = ZenScriptBase(noopts=True, connect=True).dmd
+
+class Config:
+    tmp_dir =               tempfile.mkdtemp()
+    dmd_uuid_filename =     os.path.join(tmp_dir, 'dmd_uuid.txt')
+    components_filename =   os.path.join(tmp_dir, 'componentList.txt')
+    backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
+    flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
 
 
-dmd_uuid_filename = 'dmd_uuid.txt'
-
-def run_dmd(script_text, output_file):
-    script_file = tempfile.NamedTemporaryFile(delete=False, dir=os.getcwd())
-    try:
-        script_file.write(script_text)
-        script_file.close()
-        subprocess.call(['zendmd', '--script=%s' % script_file.name], stdout=output_file, stdin=subprocess.PIPE, stderr=None)
-    finally:
-        os.unlink(script_file.name)
+class GL:
+    dmd = 0
+    args = 0
 
 
 def parse_arguments(thetime):
     parser = argparse.ArgumentParser(description="4.x export script")
     default_export_filename = '4x-export-%s.tar' % thetime
     parser.add_argument('-f', '--filename', help='specify name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=default_export_filename)
-    parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_const', const=1)
-    parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_const', const=1)
-    parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_const', const=1)
-    args = parser.parse_args()
-    return args
+    parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
+    parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
+    parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_true', default=False)
+    parser.add_argument('-d', '--debug', help="debug mode", action='store_true', default=False)
+    GL.args = parser.parse_args()
+    return GL.args
 
 
 def get_collector_list():
-    if not hasattr(dmd.Monitors, 'Hub'):
+    if not hasattr(GL.dmd.Monitors, 'Hub'):
         print 'Not using distributed collectors.'
         return []
     colldict = {}
-    for hub in dmd.Monitors.Hub.objectSubValues():
+    for hub in GL.dmd.Monitors.Hub.objectSubValues():
         for collector in hub.collectors():
             if collector.isLocalHost():
                 continue
-            if colldict.has_key(collector.hostname):
+            if collector.hostname in colldict:
                 print 'collector %s shares a hostname with collector %s, skipping duplicate.' % (collector.id, colldict[collector.hostname].id)
                 continue
             colldict[collector.hostname] = collector
@@ -88,7 +88,7 @@ def backup_remote_collectors(args, thetime, backup_dir):
         if remotezbresult is not 0:
             print 'backup failed on remote collector %s, aborting ...' % collector
             sys.exit(remotezbresult)
-        scpcmd = ['scp', 'zenoss@%s:%s' % (hostname, remote_backup_fn), '.']
+        scpcmd = ['scp', 'zenoss@%s:%s' % (hostname, remote_backup_fn), Config.tmp_dir]
         scpresult = subprocess.call(scpcmd)
         if scpresult is not 0:
             print 'failed to scp backup %s from remote collector %s, aborting ...' % (remote_backup_filename, collector)
@@ -116,11 +116,11 @@ def backup_master(backup_dir, args):
     return backup_path
 
 
-def export_component_list(components_filename):
+def export_component_list():
     print 'exporting component list ...'
     devcount = 0
-    with open(components_filename, 'w') as fp:
-        for dev in dmd.Devices.getSubDevices():
+    with open(Config.components_filename, 'w') as fp:
+        for dev in GL.dmd.Devices.getSubDevices():
             fp.write('### components for %s' % '/'.join(dev.getPrimaryPath()) + '\n')
             for comp in dev.getMonitoredComponents():
                 fp.write('/'.join(comp.getPrimaryPath()) + '\n')
@@ -132,36 +132,70 @@ def export_component_list(components_filename):
 
 
 def export_dmduuid():
-    with open(dmd_uuid_filename, 'w') as fp:
-        fp.write(dmd.uuid + '\n')
+    with open(Config.dmd_uuid_filename, 'w') as fp:
+        fp.write(GL.dmd.uuid + '\n')
     print 'dmd uuid exported'
 
 
-def make_export_tar(args, components_filename, remote_backups, master_backup_path):
-    tarcmd = ['tar', 'cf', args.filename, components_filename, dmd_uuid_filename]
-    tarcmd.extend(remote_backups)
-    tar_result = subprocess.call(tarcmd)
-    if tar_result is not 0:
-        print 'failed to create tarfile'
-        sys.exit(tar_result)
-    backup_split = os.path.split(master_backup_path)
-    export_fn = os.path.join(os.getcwd(), args.filename)
-    tar_result = subprocess.call(['tar', '-C', backup_split[0], '-uf', export_fn, backup_split[1]])
-    if tar_result is not 0:
-        print 'failed to add backup to tarfile'
-        sys.exit(tar_result)
-    print 'export successful. file is %s' % export_fn
+def add_to_tar(tar_name, path_name):
+    _pn = os.path.split(path_name)
+    _tcmd = 'tar -C %s -rf %s %s' % (_pn[0], tar_name, _pn[1])
+    _tcmd_rc = subprocess.call(_tcmd, shell=True)
+    if _tcmd_rc is not 0:
+        print 'Adding %s to %s failed!' % (path_name, tar_name)
+        sys.exit(_tcmd_rc)
+
+
+def make_export_tar(tar_file, components_filename, remote_backups, master_backup_path, flexera_dir):
+    add_to_tar(tar_file, components_filename)
+    add_to_tar(tar_file, Config.dmd_uuid_filename)
+
+    for _one in remote_backups:
+        add_to_tar(tar_file, "%s/%s" % (Config.tmp_dir, _one))
+
+    if os.path.isdir(flexera_dir):
+        add_to_tar(tar_file, flexera_dir)
+
+    add_to_tar(tar_file, master_backup_path)
+
+    print 'export successful. file is %s' % tar_file
+
 
 def main():
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     args = parse_arguments(thetime)
-    backup_dir = os.path.join(os.environ['ZENHOME'], 'backups')
-    remote_backups = backup_remote_collectors(args, thetime, backup_dir)
-    master_backup = backup_master(backup_dir, args)
-    components_filename = 'componentList.txt'
-    export_component_list(components_filename)
-    export_dmduuid()
-    make_export_tar(args, components_filename, remote_backups, master_backup)
 
-if __name__ == '__main__':
-    main()
+    tar_file = args.filename
+
+    # check accessibility of the tar file
+    print 'Checking accessibility of %s ...' % tar_file
+    if os.path.isfile(tar_file):
+        os.remove(tar_file)
+    try:
+        with open(tar_file, 'w'):
+            print '%s is accessible ...' % tar_file
+    except:
+        print 'Cannot open %s! please check accessibility ...' % tar_file
+        sys.exit(1)
+
+    if not os.path.isdir(Config.backup_dir):
+        os.makedirs(Config.backup_dir)
+
+    GL.dmd = ZenScriptBase(noopts=True, connect=True).dmd
+
+    remote_backups = backup_remote_collectors(args, thetime, Config.backup_dir)
+    master_backup = backup_master(Config.backup_dir, args)
+
+    export_component_list()
+    export_dmduuid()
+    make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
+
+
+try:
+    if __name__ == '__main__':
+        main()
+
+finally:
+    # cleanup the temp dir
+    if not GL.args.debug:
+        shutil.rmtree(Config.tmp_dir)
