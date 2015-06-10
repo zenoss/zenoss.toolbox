@@ -191,11 +191,11 @@ def main():
     make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
 
 
-try:
-    if __name__ == '__main__':
+if __name__ == '__main__':
+    try:
         main()
 
-finally:
-    # cleanup the temp dir
-    if not GL.args.debug:
-        shutil.rmtree(Config.tmp_dir)
+    finally:
+        # cleanup the temp dir
+        if not GL.args.debug:
+            shutil.rmtree(Config.tmp_dir)
