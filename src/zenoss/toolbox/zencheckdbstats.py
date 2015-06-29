@@ -232,8 +232,6 @@ def main():
     cli_options = parse_options()
     log = configure_logging('zencheckdbstats')
     log.info("Command line options: %s" % (cli_options))
-    if cli_options['debug']:
-        log.setLevel(logging.DEBUG)
 
     # Attempt to get the zenoss.toolbox.checkdbstats lock before any actions performed
     if not get_lock("zenoss.toolbox.checkdbstats", log):
@@ -241,6 +239,14 @@ def main():
 
     # Load up the contents of global.conf for using with MySQL
     global_conf_dict = parse_global_conf(os.environ['ZENHOME'] + '/etc/global.conf', log)
+
+    if cli_options['level3']:
+        cli_options['times'] = 120
+        cli_options['gap'] = 60
+        cli_options['debug'] = True
+
+    if cli_options['debug']:
+        log.setLevel(logging.DEBUG)
 
     # If running in debug, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)
     if cli_options['debug']:
@@ -260,11 +266,6 @@ def main():
 
     sample_count = 0
     mysql_results_list = []
-
-    if cli_options['level3']:
-        cli_options['times'] = 120
-        cli_options['gap'] = 60
-        cli_options['debug'] = True
 
     while sample_count < cli_options['times']:
         sample_count += 1
