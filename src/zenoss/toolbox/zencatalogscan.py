@@ -59,7 +59,7 @@ def configure_logging(scriptname):
     toolbox_log.info("############################################################")
     print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
           (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)" % (scriptname, scriptVersion))
+    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
     return toolbox_log
 
 

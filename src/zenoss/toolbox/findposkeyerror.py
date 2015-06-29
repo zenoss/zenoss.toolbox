@@ -74,7 +74,7 @@ def configure_logging(scriptname):
     toolbox_log.info("############################################################")
     print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
           (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)" % (scriptname, scriptVersion))
+    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
     return toolbox_log
 
 
@@ -450,8 +450,8 @@ def main():
     print("\n[%s] Execution finished in %s\n" %
           (strftime("%Y-%m-%d %H:%M:%S", localtime()),
            datetime.timedelta(seconds=int(time.time() - execution_start))))
-    log.info("findposkeyerror examined %d objects, encountered %d errors, and attempted %d repairs" % 
-             (counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value()))
+    log.info("findposkeyerror examined %d objects, encountered %d errors, and attempted %d repairs", 
+             counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
     log.info("findposkeyerror completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
 
