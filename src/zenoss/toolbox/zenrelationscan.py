@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "0.9.1"
+scriptVersion = "1.0.1"
 
 import argparse
 import datetime
@@ -65,9 +65,10 @@ def configure_logging(scriptname):
     toolbox_log.addHandler(handler)
 
     # Print initialization string to console, log status to logfile
-    print("\n[%s] Initializing %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
-    toolbox_log.info("Initializing %s" % (scriptname))
+    toolbox_log.info("############################################################")
+    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
+    toolbox_log.info("Initializing %s (version %s)" % (scriptname, scriptVersion))
     return toolbox_log
 
 
@@ -260,6 +261,8 @@ def main():
     scan_relationships(cli_options['fix'], cli_options['cycles'], cli_options['unlimitedram'], dmd, log, counters)
 
     # Print final status summary, update log file with termination block
+    log.info("zenrelationscan examined %d objects, encountered %d errors, and attempted %d repairs" %
+             (counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value()))
     print("\n[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),
            datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zenrelationscan completed in %1.2f seconds" % (time.time() - execution_start))

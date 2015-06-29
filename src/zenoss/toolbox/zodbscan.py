@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.1"
+scriptVersion = "1.0.2"
 
 import Globals
 import argparse
@@ -72,9 +72,10 @@ def configure_logging(scriptname):
     toolbox_log.addHandler(handler)
 
     # Print initialization string to console, log status to logfile
-    print("\n[%s] Initializing %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
-    toolbox_log.info("Initializing %s" % (scriptname))
+    toolbox_log.info("############################################################")
+    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
+    toolbox_log.info("Initializing %s (version %s)" % (scriptname, scriptVersion))
     return toolbox_log
 
 
@@ -390,9 +391,6 @@ def main():
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
-    #logging.getLogger('relstorage').setLevel(logging.CRITICAL)
-    #logging.getLogger('ZODB.Connection').setLevel(logging.CRITICAL)
-        
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not get_lock("zenoss.toolbox", log):
         sys.exit(1)
