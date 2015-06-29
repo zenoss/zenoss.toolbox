@@ -237,8 +237,8 @@ class PKEReporter(object):
             pass
         if not name:
             # Now load up the child and see if it has an id
-            child = self._conn[child_oid]
             try:
+                child = self._conn[child_oid]
                 name = child.id
             except Exception:
                 try:
