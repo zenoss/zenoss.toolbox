@@ -1,13 +1,13 @@
 zenoss.toolbox
 ==============
-*Current version: 0.6.0*
+*Current version: 0.7.0*
 
-Utilities for analyzing/debugging Zenoss environments as well as tools to increase/maintain performance.  
+Utilities for analyzing/debugging Zenoss environments as well as tools to maintain/increase performance.  
 
 *How do I Install and Use the zenoss.toolbox Package?*
  * https://support.zenoss.com/hc/en-us/articles/203117595
 
-Tools Included
+Standard Tools
 ==============
 
 zodbscan
@@ -29,6 +29,10 @@ zencatalogscan
 --------------
 *How do I use zencatalogscan to detect and fix unresolvable object references in catalogs?*
  * https://support.zenoss.com/hc/en-us/articles/203118075
+
+
+Additional Tools
+================
 
 zenindextool
 ------------

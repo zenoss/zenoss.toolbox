@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.7.0
+--------------------
+ * Fixed ZEN-17829: Toolbox tools don't output version, status to screen, log file
+
 0.6.0
 --------------------
  * Fixed ZEN-17179: Create toolbox tool for zencheckdbstats
