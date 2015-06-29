@@ -123,8 +123,8 @@ def connect_to_mysql(global_conf_dict, log):
         if os.environ['ZENDSHOME']:   # If ZENDSHOME is set, assume running with ZenDS
             if global_conf_dict['zodb-host'] == 'localhost':
                 mysql_connection = MySQLdb.connect(unix_socket=global_conf_dict['zodb-socket'],
-                                                   user=global_conf_dict['zodb-user'],
-                                                   passwd=global_conf_dict['zodb-password'],
+                                                   user=global_conf_dict['zodb-admin-user'],
+                                                   passwd=global_conf_dict['zodb-admin-password'],
                                                    db=global_conf_dict['zodb-db'])
             else:
                 mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
@@ -133,8 +133,8 @@ def connect_to_mysql(global_conf_dict, log):
                                                    db=global_conf_dict['zodb-db'])
         else:    # Assume MySQL (with no customized zodb-socket)
             mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
-                                               user=global_conf_dict['zodb-user'],
-                                               passwd=global_conf_dict['zodb-password'],
+                                               user=global_conf_dict['zodb-admin-user'],
+                                               passwd=global_conf_dict['zodb-admin-password'],
                                                db=global_conf_dict['zodb-db'])
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
