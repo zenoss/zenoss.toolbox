@@ -126,15 +126,60 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
 
     catalog = catalog_list[0]
     initial_catalog_size = catalog_list[1]
-
-    print("[%s] Examining %-35s (%d Objects)" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), catalog_name, initial_catalog_size))
-    log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
-
     number_of_issues = -1
     current_cycle = 0
     if not fix:
         max_cycles = 1
+
+    # Fix for ZEN-14717 (only for global_catalog, and only if fix==True)
+    if (catalog_name == 'global_catalog') and (fix):
+        log.info("Examining global_catalog._catalog.paths and .uids for consistency")
+        print("[%s] Examining %-35s (%d Objects)" %
+                  (time.strftime("%Y-%m-%d %H:%M:%S"), "global_catalog RIDs consistency", initial_catalog_size))
+        number_of_issues = 0
+        scanned_count = 0
+        try:
+            # ZEN-12165: show progress bar immediately before 'for' time overhead, before loading catalog
+            scan_progress_message(False, fix, current_cycle, "global_catalog RIDs consistency", 0, 0, log)
+            broken_rids = []
+            catalog_reference = catalog_list[0]._catalog
+            if len(catalog_reference.paths) > 50:
+                progress_bar_chunk_size = (len(catalog_reference.paths)//50) + 1
+
+            for rid, path in catalog_reference.paths.iteritems():
+                scanned_count += 1
+                if (scanned_count % progress_bar_chunk_size) == 0:
+                    chunk_number = scanned_count // progress_bar_chunk_size
+                    scan_progress_message(False, fix, current_cycle, catalog_name, number_of_issues, chunk_number, log)
+                if path not in catalog_reference.uids:
+                    number_of_issues += 1
+                    broken_rids.append(rid)
+
+            log.info("Paths/UIDs check found %s issues - attempting to remove" % (len(broken_rids)))
+
+            for item in broken_rids:
+              try:
+                catalog_reference.paths.pop(item)
+                catalog_reference.data.pop(item)
+              except:
+                pass
+
+            catalog_reference._p_changed = True
+            transaction.commit()
+        except Exception, e:
+            log.exception(e)
+
+        # Final transaction.abort() to try and free up used memory
+        log.debug("Calling transaction.abort() to minimize memory footprint")
+        transaction.abort()
+
+        scan_progress_message(True, fix, current_cycle, "global_catalog RIDs consistency", number_of_issues, chunk_number, log)
+
+    number_of_issues = -1
+
+    print("[%s] Examining %-35s (%d Objects)" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), catalog_name, initial_catalog_size))
+    log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
 
     while ((current_cycle < max_cycles) and (number_of_issues != 0)):
         number_of_issues = 0
