@@ -155,7 +155,7 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
                     number_of_issues += 1
                     broken_rids.append(rid)
 
-            log.info("Paths/UIDs check found %s issues - attempting to remove" % (len(broken_rids)))
+            log.info("Paths/UIDs check found %s issues - attempting to remove", len(broken_rids))
 
             for item in broken_rids:
               try:
