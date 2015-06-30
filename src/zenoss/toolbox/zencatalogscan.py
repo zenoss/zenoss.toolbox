@@ -173,7 +173,7 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
         log.debug("Calling transaction.abort() to minimize memory footprint")
         transaction.abort()
 
-        scan_progress_message(True, fix, current_cycle, "global_catalog RIDs consistency", number_of_issues, chunk_number, log)
+        scan_progress_message(True, fix, 1, "global_catalog RIDs consistency", number_of_issues, chunk_number, log)
 
     number_of_issues = -1
 
