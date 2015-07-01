@@ -188,18 +188,18 @@ def main():
         }
 
     if cli_options['list'] or not cli_options['type'] :
-    # Output list of present catalogs to the UI, perform no further operations
+        # Output list of present catalogs to the UI, perform no further operations
         print "List of dmd types that support reIndex() calls from this script:\n"
         print "\n".join(types_to_reIndex.keys())
         log.info("Zenreindextool finished - list of supported types output to CLI")
         exit(1)
+
+    if cli_options['type'] in types_to_reIndex.keys():
+        any_issue = reindex_dmd_objects(cli_options['type'], types_to_reIndex[cli_options['type']], dmd, log)
     else:
-        if cli_options['type'] in types_to_reIndex.keys():
-            any_issue = reindex_dmd_objects(cli_options['type'], types_to_reIndex[cli_options['type']], dmd, log)
-        else:
-            print("Type '%s' unrecognized - unable to reIndex()" % (cli_options['type']))
-            log.error("CLI input '%s' doesn't match recognized types" % (cli_options['type']))
-            exit(1)
+        print("Type '%s' unrecognized - unable to reIndex()" % (cli_options['type']))
+        log.error("CLI input '%s' doesn't match recognized types" % (cli_options['type']))
+        exit(1)
 
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),
