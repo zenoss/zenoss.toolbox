@@ -7,6 +7,7 @@ Changelog
  * Fixed ZEN-17615: zodbscan fails to process PKE edge case
  * Fixed ZEN-17551: zencheckdbstats must use zodb-admin-user, password
  * Fixed ZEN-17616: zencheckdbstats doesn't switch to debug with -l3 flag
+ * Fixed ZEN-14717: zencatalogscan must check for rids not in both paths and uids
 
 0.6.0
 --------------------
