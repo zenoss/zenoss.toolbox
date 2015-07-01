@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.2"
+scriptVersion = "1.0.3"
 
 import argparse
 import datetime
@@ -101,6 +101,7 @@ def index_device(dev, dmd, log):
             log.exception(e)
 
 def reindex_dmd_objects(name, type, dmd, log):
+    """Performs the reindex.  Returns False if no issues encountered, otherwise True"""
     try:
         inline_print("[%s] Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
         if not (name == 'Devices'):
@@ -132,10 +133,12 @@ def reindex_dmd_objects(name, type, dmd, log):
             log.info("%d Devices reindexed successfully" % (output_count))
         dmd._p_jar.sync()
         transaction.commit()
+        return False
     except Exception as e:
         print " FAILED  (check log file for details)"
         log.error("%s.reIndex() failed" % (name))
         log.exception(e)
+        return True
 
 
 def parse_options():
@@ -189,9 +192,10 @@ def main():
         print "List of dmd types that support reIndex() calls from this script:\n"
         print "\n".join(types_to_reIndex.keys())
         log.info("Zenreindextool finished - list of supported types output to CLI")
+        exit(1)
     else:
         if cli_options['type'] in types_to_reIndex.keys():
-            reindex_dmd_objects(cli_options['type'], types_to_reIndex[cli_options['type']], dmd, log)
+            any_issue = reindex_dmd_objects(cli_options['type'], types_to_reIndex[cli_options['type']], dmd, log)
         else:
             print("Type '%s' unrecognized - unable to reIndex()" % (cli_options['type']))
             log.error("CLI input '%s' doesn't match recognized types" % (cli_options['type']))
@@ -202,6 +206,13 @@ def main():
                                                  datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zenindextool completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
+
+    if any_issue:
+        print("** WARNING ** Issues were encountered - Consult KB article at")
+        print("      https://support.zenoss.com/hc/en-us/articles/203263689\n")
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
