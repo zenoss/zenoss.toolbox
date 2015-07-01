@@ -28,6 +28,7 @@ class Config:
     tmp_dir =               tempfile.mkdtemp()
     dmd_uuid_filename =     os.path.join(tmp_dir, 'dmd_uuid.txt')
     components_filename =   os.path.join(tmp_dir, 'componentList.txt')
+    md5_filename =          os.path.join(tmp_dir, 'backup.md5')
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
 
@@ -137,6 +138,14 @@ def export_dmduuid():
     print 'dmd uuid exported'
 
 
+def genmd5(master_backup_path):
+    _cmd = 'md5sum -b %s > %s' % (master_backup_path, Config.md5_filename)
+    _rc = subprocess.call(_cmd, shell=True)
+    if _rc != 0:
+        print 'Generating md5 failed'
+        sys.exit(_rc)
+
+
 def add_to_tar(tar_name, path_name):
     _pn = os.path.split(path_name)
     _tcmd = 'tar -C %s -rf %s %s' % (_pn[0], tar_name, _pn[1])
@@ -157,6 +166,7 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
         add_to_tar(tar_file, flexera_dir)
 
     add_to_tar(tar_file, master_backup_path)
+    add_to_tar(tar_file, Config.md5_filename)
 
     print 'export successful. file is %s' % tar_file
 
@@ -188,6 +198,7 @@ def main():
 
     export_component_list()
     export_dmduuid()
+    genmd5(master_backup)
     make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
 
 
