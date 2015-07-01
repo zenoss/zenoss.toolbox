@@ -211,8 +211,8 @@ def main():
         print("** WARNING ** Issues were encountered - Consult KB article at")
         print("      https://support.zenoss.com/hc/en-us/articles/203263689\n")
         sys.exit(1)
-    else:
-        sys.exit(0)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":
