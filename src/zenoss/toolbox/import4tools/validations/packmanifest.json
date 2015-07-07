@@ -1,5 +1,9 @@
 {
     "packs": {
+        "ZenPacks.zenoss.AbsoluteCounters": {
+            "min4xVersion": null, 
+            "status": "OK"
+        },
         "ZenPacks.zenoss.Licensing": {
             "min4xVersion": null, 
             "status": "OK"
@@ -373,7 +377,7 @@
             "status": "OK"
         }, 
         "ZenPacks.zenoss.vSphere": {
-            "min4xVersion": "3.1.0", 
+            "min4xVersion": null, 
             "status": "OK"
         }, 
         "ZenPacks.zenoss.AixMonitor": {
