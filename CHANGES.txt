@@ -9,6 +9,7 @@ Changelog
  * Fixed ZEN-17616: zencheckdbstats doesn't switch to debug with -l3 flag
  * Fixed ZEN-14717: zencatalogscan must check for rids not in both paths and uids
  * Fixed ZEN-16505: Add an exit code of 1 if issues are detected in zenindextool
+ * Fixed ZEN-18634: zencatalogscan should create events within Zenoss
 
 0.6.0
 --------------------
