@@ -187,6 +187,26 @@ def global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log):
             log.debug("Calling transaction.abort() to minimize memory footprint")
             transaction.abort()
 
+    if number_of_issues > 0:
+        eventSummaryMsg = "\'%s\' - %d Error(s) Detected (%d total items)" % \
+                              ('global_catalog_RIDs', number_of_issues, number_of_items)
+        eventSeverity = 4
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information and resolution options"
+    else:
+        eventSummaryMsg = "\'%s\' - No Errors Detected (%d total items)" % \
+                              ('global_catalog_RIDs', number_of_items)
+        eventSeverity = 2
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+
+    dmd.ZenEventManager.sendEvent({
+            'device'     : 'localhost',
+            'summary'    : eventSummaryMsg,
+            'component'  : 'zencatalogscan',
+            'severity'   : eventSeverity,
+            'eventClass' : '/Status',
+            'eventKey'   : "zencatalogscan_global_catalog_RIDs",
+            'details'    : eventDetails
+        })
 
 
 def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
@@ -252,8 +272,26 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
         scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, chunk_number, log)
 
     if number_of_issues > 0:
-        return True
-    return False
+        eventSummaryMsg = "\'%s\' - %d Error(s) Detected (%d total items)" % (catalog_name, number_of_issues, initial_catalog_size)
+        eventSeverity = 4  
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information and resolution options"
+    else:
+        eventSummaryMsg = "\'%s\' - No Errors Detected (%d total items)" % (catalog_name, initial_catalog_size)
+        eventSeverity = 2
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+ 
+
+    dmd.ZenEventManager.sendEvent({ 
+            'device'     : 'localhost',
+            'summary'    : eventSummaryMsg,
+            'component'  : 'zencatalogscan',
+            'severity'   : eventSeverity,
+            'eventClass' : '/Status',
+            'eventKey'   : "zencatalogscan_%s" % (catalog_name),
+            'details'    : eventDetails
+        })
+
+    return (number_of_issues != 0)
 
 
 def build_catalog_dict(dmd, log):
@@ -387,6 +425,25 @@ def main():
                                                  datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zencatalogscan completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
+
+    if any_issue: 
+        eventSummaryMsg = "zencatalogscan execution encoutered errors (took %1.2f seconds)" % (time.time() - execution_start)
+        eventSeverity = 4 
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information for resolution options"
+    else:
+        eventSummaryMsg = "zencatalogscan execution completed without errors (took %1.2f seconds)" % (time.time() - execution_start)
+        eventSeverity = 2
+        eventDetails = "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+
+    dmd.ZenEventManager.sendEvent({
+            'device'     : 'localhost',
+            'summary'    : eventSummaryMsg,
+            'component'  : 'zencatalogscan',
+            'severity'   : eventSeverity,
+            'eventClass' : '/Status',
+            'eventKey'   : "zencatalogscan_execution_status",
+            'details'    : eventDetails
+        })
 
     if any_issue and not cli_options['fix']:
         print("** WARNING ** Issues were detected - Consult KB article at")
