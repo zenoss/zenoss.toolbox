@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.2"
+scriptVersion = "1.0.3"
 
 import Globals
 import argparse
@@ -371,7 +371,7 @@ Refers to a missing object:
 def parse_options():
     """Defines command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans zodb for dangling references. Additional documentation at "
+                                     description="Scans zodb-db for dangling references. Additional documentation at "
                                                   "https://support.zenoss.com/hc/en-us/articles/203118175")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
@@ -397,7 +397,9 @@ def main():
 
     number_of_issues = Counter(0)
 
-    PKEReporter('zodb').run(log, number_of_issues)
+    global_config = getGlobalConfiguration()
+
+    PKEReporter(global_config['zodb-db']).run(log, number_of_issues)
     log.info("%d Dangling References were detected" % (number_of_issues.value()))
 
     print("[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),
