@@ -200,8 +200,7 @@ def main():
         ucsx = GL.dmd.ZenPackManager.packs._getOb('ZenPacks.zenoss.UCSXSkin')
     except:
         print 'Non-UCSPM platform.'
-        pass
-
+     
     if ucsx:
         if ucsx.version in Config.ucsx_vers:
             print 'UCSPM version %s is supported.' % ucsx.version
