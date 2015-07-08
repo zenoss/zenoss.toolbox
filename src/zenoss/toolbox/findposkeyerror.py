@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.6.3"
+scriptVersion = "1.6.4"
 
 import abc
 import argparse
@@ -114,12 +114,13 @@ class Counter(object):
             return self.val.value
 
 
-def progress_bar(items, errors, repairs, fix_value):
+def progress_bar(items, errors, repairs, fix_value, cycle):
     if fix_value:
-        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d | Repairs: %6d |  " %
-                     (time.strftime("%Y-%m-%d %H:%M:%S"), items, errors, repairs))
+        inline_print("[%s]  Cycle %s  | Items Scanned: %12d | Errors:  %6d | Repairs: %6d |  " %
+                     (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, items, errors, repairs))
     else:
-        inline_print("[%s]  | Items Scanned: %12d | Errors:  %6d |  " % (time.strftime("%Y-%m-%d %H:%M:%S"), items, errors))
+        inline_print("[%s]  Cycle %s  | Items Scanned: %12d | Errors:  %6d |  " % 
+                     (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, items, errors))
 
 
 class Fixer(object):
@@ -291,99 +292,114 @@ def getOID(ex):
     return "0x%08x" % int(str(ex), 16)
 
 
-def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, counters):
+def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, counters, max_cycles):
     """ Processes issues as they are found, handles progress output, logs to output file """
 
     PROGRESS_INTERVAL = 829  # Prime number near 1000 ending in a 9, used for progress bar
 
-    # Objects that will have their children traversed are stored in 'nodes'
-    nodes = [topnode]
-    while nodes:
-        node = nodes.pop(0)
-        counters['item_count'].increment()
-        path = node.getPhysicalPath()
-        path_string = "/".join(path)
+    current_cycle = 0
+    if not attempt_fix:
+        max_cycles = 1
+    number_of_issues = -1
 
-        if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
-            if not use_unlimited_memory:
-                transaction.abort()
-            progress_bar(counters['item_count'].value(), counters['error_count'].value(),
-                         counters['repair_count'].value(), attempt_fix)
+    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
+        # Objects that will have their children traversed are stored in 'nodes'
+        print
+        current_cycle += 1
+        nodes = [topnode]
+        counters = {
+            'item_count': Counter(0),
+            'error_count': Counter(0),
+            'repair_count': Counter(0)
+            }
+        while nodes:
+            node = nodes.pop(0)
+            counters['item_count'].increment()
+            path = node.getPhysicalPath()
+            path_string = "/".join(path)
 
-        try:
-            attributes, relationships = _getEdges(node)
-        except _RELEVANT_EXCEPTIONS as e:
-            log.warning("%s: %s %s '%s'" %
-                        (type(e).__name__, e, "while retreiving children of", path_string))
-            counters['error_count'].increment()
-            if attempt_fix:
-                if isinstance(e, POSKeyError):
-                    fixPOSKeyError(type(e).__name__, e, "node", name, path, dmd, log, counters)
-            continue
-        except Exception as e:
-            log.exception(e)
+            if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
+                if not use_unlimited_memory:
+                    transaction.abort()
+                progress_bar(counters['item_count'].value(), counters['error_count'].value(),
+                             counters['repair_count'].value(), attempt_fix, current_cycle)
 
-        for name in relationships:
             try:
-                if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
-                    if not use_unlimited_memory:
-                        transaction.abort()
-                    progress_bar(counters['item_count'].value(), counters['error_count'].value(),
-                                 counters['repair_count'].value(), attempt_fix)
-                counters['item_count'].increment()
-
-                rel = node._getOb(name)
-                rel()
-                # ToManyContRelationship objects should have all referenced objects traversed
-                if isinstance(rel, ToManyContRelationship):
-                    nodes.append(rel)
-            except SystemError as e:
-                # to troubleshoot traceback in:
-                #   https://dev.zenoss.com/tracint/pastebin/4769
-                # ./findposkeyerror --fixrels /zport/dmd/
-                #   SystemError: new style getargs format but argument is not a tuple
-                log.warning("%s: %s on %s '%s' of %s" %
-                            (type(e).__name__, e, "relationship", name, path_string))
-                raise  # Not sure why we are raising this vs. logging and continuing
+                attributes, relationships = _getEdges(node)
             except _RELEVANT_EXCEPTIONS as e:
+                log.warning("%s: %s %s '%s'" %
+                            (type(e).__name__, e, "while retreiving children of", path_string))
                 counters['error_count'].increment()
-                log.warning("%s: %s on %s '%s' of %s" %
-                            (type(e).__name__, e, "relationship", name, path_string))
                 if attempt_fix:
                     if isinstance(e, POSKeyError):
-                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
+                        fixPOSKeyError(type(e).__name__, e, "node", name, path, dmd, log, counters)
+                continue
             except Exception as e:
-                log.warning("%s: %s on %s '%s' of %s" %
-                            (type(e).__name__, e, "relationship", name, path_string))
+                log.exception(e)
 
-        for name in attributes:
-            try:
-                if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
-                    if not use_unlimited_memory:
-                        transaction.abort()
-                    progress_bar(counters['item_count'].value(), counters['error_count'].value(),
-                                 counters['repair_count'].value(), attempt_fix)
-                counters['item_count'].increment()
-                childnode = node._getOb(name)
-                childnode.getId()
-            except _RELEVANT_EXCEPTIONS as e:
-                counters['error_count'].increment()
-                log.warning("%s: %s on %s '%s' of %s" %
-                            (type(e).__name__, e, "attribute", name, path_string))
-                if attempt_fix:
-                    if isinstance(e, POSKeyError):
-                        fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
-            except Exception as e:
-                log.warning("%s: %s on %s '%s' of %s" %
-                            (type(e).__name__, e, "relationship", name, path_string))
-            else:
-                # No exception, so it should be safe to add this child node as a traversable object.
-                nodes.append(childnode)
+            for name in relationships:
+                try:
+                    if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
+                        if not use_unlimited_memory:
+                            transaction.abort()
+                        progress_bar(counters['item_count'].value(), counters['error_count'].value(),
+                                     counters['repair_count'].value(), attempt_fix, current_cycle)
+                    counters['item_count'].increment()
 
-    if not use_unlimited_memory:
-        transaction.abort()
-    progress_bar(counters['item_count'].value(), counters['error_count'].value(),
-                 counters['repair_count'].value(), attempt_fix)
+                    rel = node._getOb(name)
+                    rel()
+                    # ToManyContRelationship objects should have all referenced objects traversed
+                    if isinstance(rel, ToManyContRelationship):
+                        nodes.append(rel)
+                except SystemError as e:
+                    # to troubleshoot traceback in:
+                    #   https://dev.zenoss.com/tracint/pastebin/4769
+                    # ./findposkeyerror --fixrels /zport/dmd/
+                    #   SystemError: new style getargs format but argument is not a tuple
+                    log.warning("%s: %s on %s '%s' of %s" %
+                                (type(e).__name__, e, "relationship", name, path_string))
+                    raise  # Not sure why we are raising this vs. logging and continuing
+                except _RELEVANT_EXCEPTIONS as e:
+                    counters['error_count'].increment()
+                    log.warning("%s: %s on %s '%s' of %s" %
+                                (type(e).__name__, e, "relationship", name, path_string))
+                    if attempt_fix:
+                        if isinstance(e, POSKeyError):
+                            fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
+                except Exception as e:
+                    log.warning("%s: %s on %s '%s' of %s" %
+                                (type(e).__name__, e, "relationship", name, path_string))
+
+            for name in attributes:
+                try:
+                    if (counters['item_count'].value() % PROGRESS_INTERVAL) == 0:
+                        if not use_unlimited_memory:
+                            transaction.abort()
+                        progress_bar(counters['item_count'].value(), counters['error_count'].value(),
+                                     counters['repair_count'].value(), attempt_fix, current_cycle)
+                    counters['item_count'].increment()
+                    childnode = node._getOb(name)
+                    childnode.getId()
+                except _RELEVANT_EXCEPTIONS as e:
+                    counters['error_count'].increment()
+                    log.warning("%s: %s on %s '%s' of %s" %
+                                (type(e).__name__, e, "attribute", name, path_string))
+                    if attempt_fix:
+                        if isinstance(e, POSKeyError):
+                            fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
+                except Exception as e:
+                    log.warning("%s: %s on %s '%s' of %s" %
+                                (type(e).__name__, e, "relationship", name, path_string))
+                else:
+                    # No exception, so it should be safe to add this child node as a traversable object.
+                    nodes.append(childnode)
+
+        if not use_unlimited_memory:
+            transaction.abort()
+
+        progress_bar(counters['item_count'].value(), counters['error_count'].value(),
+                     counters['repair_count'].value(), attempt_fix, current_cycle)
+        number_of_issues = counters['error_count'].value()
 
 
 def parse_options():
@@ -399,6 +415,8 @@ def parse_options():
                         help="verbose log output (debug logging)")
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to fix ZenRelationship objects")
+    parser.add_argument("-n", "--cycles", action="store", default="2", type=int,
+                        help="maximum times to cycle (with --fix)")
     parser.add_argument("-p", "--path", action="store", default="/", type=str,
                         help="base path to scan from (Devices.Server)?")
     parser.add_argument("-u", "--unlimitedram", action="store_true", default=False,
@@ -441,10 +459,10 @@ def main():
     except KeyError:
         print "Invalid path: %s" % (cli_options['path'])
     else:
-        print("[%s] Examining items under the '%s' path (%s):\n" %
+        print("[%s] Examining items under the '%s' path (%s):" %
               (strftime("%Y-%m-%d %H:%M:%S", localtime()), cli_options['path'], folder))
         log.info("Examining items under the '%s' path (%s)" % (cli_options['path'], folder))
-        findPOSKeyErrors(folder, cli_options['fix'], cli_options['unlimitedram'], dmd, log, counters)
+        findPOSKeyErrors(folder, cli_options['fix'], cli_options['unlimitedram'], dmd, log, counters, cli_options['cycles'])
         print
 
     print("\n[%s] Execution finished in %s\n" %
