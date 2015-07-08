@@ -31,7 +31,7 @@ class Config:
     md5_filename =          os.path.join(tmp_dir, 'backup.md5')
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
-    ucsx_ver =              '1.1.1'
+    ucsx_vers =             ['1.1', '1.1.1']
 
 
 class GL:
@@ -194,13 +194,20 @@ def main():
 
     GL.dmd = ZenScriptBase(noopts=True, connect=True).dmd
 
+    print 'Checking platform ...'
     try:
+        ucsx = None
         ucsx = GL.dmd.ZenPackManager.packs._getOb('ZenPacks.zenoss.UCSXSkin')
-        if not ucsx or ucsx.version != Config.ucsx_ver:
-            raise Exception
     except:
-        print 'Invalid environment. Only UCSPM %s is supported ...' % Config.ucsx_ver
-        sys.exit(1)
+        print 'Non-UCSPM platform.'
+        pass
+
+    if ucsx:
+        if ucsx.version in Config.ucsx_vers:
+            print 'UCSPM version %s is supported.' % ucsx.version
+        else:
+            print 'UCSPM version %s is not supported ...' % ucsx.version
+            sys.exit(1)
 
     remote_backups = backup_remote_collectors(args, thetime, Config.backup_dir)
     master_backup = backup_master(Config.backup_dir, args)
