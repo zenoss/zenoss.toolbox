@@ -108,10 +108,25 @@ def backup_master(backup_dir, args):
         zbcommand.append('--no-eventsdb')
     if args.no_perfdata:
         zbcommand.append('--no-perfdata')
-    zbresult = subprocess.call(zbcommand)
-    if zbresult is not 0:
-        print 'no backup specified and making one failed, aborting ...'
-        sys.exit(zbresult)
+
+    try:
+        raw_input("Zenoss will now be stopped to take a backup of the master.  "
+                "It will be restarted once the backup completes.  "
+                "Press ENTER to continue or <CTRL+C> to quit\n")
+    except KeyboardInterrupt:
+        sys.exit(1)
+
+    subprocess.check_call(['zenoss', 'stop'])
+    try:
+        zbresult = subprocess.call(zbcommand)
+        if zbresult is not 0:
+            print 'no backup specified and making one failed, aborting ...'
+            raise Exception
+    except:
+        sys.exit(1)
+    finally:
+        subprocess.call(['zenoss', 'start'])
+
     after_dir = set(os.listdir(backup_dir))
     backup_path = os.path.join(backup_dir, list(after_dir - before_dir)[0])
     return backup_path
