@@ -10,7 +10,7 @@ Changelog
  * Fixed ZEN-14717: zencatalogscan must check for rids not in both paths and uids
  * Fixed ZEN-16505: Add an exit code of 1 if issues are detected in zenindextool
  * Fixed ZEN-18634: zencatalogscan should create events within Zenoss
- * FIXED ZEN-17875: zodbscan doesn't work with alternate zodb-db settings
+ * Fixed ZEN-17875: zodbscan doesn't work with alternate zodb-db settings
 
 0.6.0
 --------------------
