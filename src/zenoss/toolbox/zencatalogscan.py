@@ -200,11 +200,13 @@ def global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log, c
         dmd.ZenEventManager.sendEvent({
             'device'        : 'localhost',
             'summary'       : eventSummaryMsg,
-            'component'     : 'zencatalogscan',
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
             'severity'      : eventSeverity,
             'eventClass'    : '/Status',
-            'eventKey'      : "zencatalogscan_global_catalog_RIDs",
-            'eventClassKey' : "zencatalogscan_global_catalog_RIDs",
+            'eventKey'      : "global_catalog_RIDs",
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.global_catalog_RIDs",
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
             'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
         })
 
@@ -279,14 +281,16 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_e
             eventSummaryMsg = "'%s' - No Errors Detected (%d total items)" % (catalog_name, initial_catalog_size)
             eventSeverity = 1
      
-        dmd.ZenEventManager.sendEvent({ 
+        dmd.ZenEventManager.sendEvent({
             'device'        : 'localhost',
             'summary'       : eventSummaryMsg,
-            'component'     : 'zencatalogscan',
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
             'severity'      : eventSeverity,
             'eventClass'    : '/Status',
-            'eventKey'      : "zencatalogscan_%s" % (catalog_name),
-            'eventClassKey' : "zencatalogscan_%s" % (catalog_name),
+            'eventKey'      : "%s" % (catalog_name),
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.%s" % (catalog_name),
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
             'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
         })
 
@@ -437,11 +441,13 @@ def main():
         dmd.ZenEventManager.sendEvent({
             'device'        : 'localhost',
             'summary'       : eventSummaryMsg,
-            'component'     : 'zencatalogscan',
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
             'severity'      : eventSeverity,
             'eventClass'    : '/Status',
-            'eventKey'      : "zencatalogscan_execution_status",
-            'eventClassKey' : "zencatalogscan_execution_status",
+            'eventKey'      : "execution_status",
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.execution_status",
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
             'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
         })
 
