@@ -199,7 +199,7 @@ def main():
         ucsx = None
         ucsx = GL.dmd.ZenPackManager.packs._getOb('ZenPacks.zenoss.UCSXSkin')
     except:
-        print 'Non-UCSPM platform.'
+        pass
 
     if ucsx:
         if ucsx.version in Config.ucsx_vers:
