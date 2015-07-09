@@ -34,7 +34,7 @@ class Config:
     md5_filename =          os.path.join(tmp_dir, 'backup.md5')
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
-    ucsx_vers =             ['1.1', '1.1.1']
+    ucsx_vers =             ['1.1.0', '1.1.1']
 
 
 class GL:
