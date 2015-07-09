@@ -58,10 +58,12 @@ def setup_parser(validationSubs):
         validationSub.add_parser(subparsers)
     return parser
 
+def parse_argz(args=None):
+    parser = setup_parser(type.__subclasses__(Import4Validation))
+    return parser.parse_args(args)
 
 def main():
-    parser = setup_parser(type.__subclasses__(Import4Validation))
-    argz = parser.parse_args()
+    argz = parse_argz()
     runner = ValidationRunner(argz)
     sys.exit(runner.run())
 

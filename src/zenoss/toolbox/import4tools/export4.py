@@ -18,6 +18,9 @@ import sys
 import tempfile
 import shutil
 
+from validate4import import ValidationRunner
+from validate4import import parse_argz as parseVRunnerArgs
+
 import Globals
 from Products.ZenUtils.Utils import unused
 unused(Globals)
@@ -31,7 +34,7 @@ class Config:
     md5_filename =          os.path.join(tmp_dir, 'backup.md5')
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
-    ucsx_vers =             ['1.1', '1.1.1']
+    ucsx_vers =             ['1.1.0', '1.1.1']
 
 
 class GL:
@@ -190,6 +193,9 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
 def main():
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     args = parse_arguments(thetime)
+
+    print 'Running validations'
+    ValidationRunner(parseVRunnerArgs(["zenpack"])).run()
 
     tar_file = args.filename
 
