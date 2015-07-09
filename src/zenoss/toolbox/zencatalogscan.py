@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.2.1"
+scriptVersion = "1.3.1"
 
 import argparse
 import datetime
@@ -56,9 +56,10 @@ def configure_logging(scriptname):
     toolbox_log.addHandler(handler)
 
     # Print initialization string to console, log status to logfile
-    print("\n[%s] Initializing %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
-    toolbox_log.info("Initializing %s" % (scriptname))
+    toolbox_log.info("############################################################")
+    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
+    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
     return toolbox_log
 
 
@@ -120,20 +121,113 @@ def scan_progress_message(done, fix, cycle, catalog, issues, chunk, log):
                          (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100))
 
 
-def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
-    """Scan through a catalog looking for broken references"""
+def global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_events):
+    """Scan through global_catalog verifying consistency of rids"""
 
-    catalog = catalog_list[0]
-    initial_catalog_size = catalog_list[1]
-
-    print("[%s] Examining %-35s (%d Objects)" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), catalog_name, initial_catalog_size))
-    log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
-
+    catalog_reference = catalog_list[0]._catalog
+    number_of_items = len(catalog_reference.paths)
     number_of_issues = -1
     current_cycle = 0
     if not fix:
         max_cycles = 1
+
+    log.info("Examining global_catalog's ._catalog.paths for consistency against ._catalog.uids")
+    print("[%s] Examining %-35s (%d Objects)" %
+              (time.strftime("%Y-%m-%d %H:%M:%S"), "global_catalog RIDs consistency", number_of_items))
+
+    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
+        number_of_items = len(catalog_reference.paths)
+        if number_of_items > 50:
+            progress_bar_chunk_size = (number_of_items//50) + 1
+        number_of_issues = 0
+        current_cycle += 1
+        scanned_count = 0
+
+        if (fix):
+            log.info("Beginning cycle %d for global_catalog RIDs consistency", current_cycle)
+
+        # ZEN-12165: show progress bar immediately before 'for' time overhead, before loading catalog
+        scan_progress_message(False, fix, current_cycle, "global_catalog RIDs consistency", 0, 0, log)
+
+        try:
+            broken_rids = []
+
+            for rid, path in catalog_reference.paths.iteritems():
+                scanned_count += 1
+                if (scanned_count % progress_bar_chunk_size) == 0:
+                    chunk_number = scanned_count // progress_bar_chunk_size
+                    scan_progress_message(False, fix, current_cycle, "global_catalog RIDs consistency", number_of_issues, chunk_number, log)
+                if path not in catalog_reference.uids:
+                    number_of_issues += 1
+                    broken_rids.append(rid)
+
+            if number_of_issues > 0:
+                log.warning("global_catalog RIDs consistency detected %s issues with paths/data and uids", number_of_issues)
+            else:
+                log.info("global_catalog RIDs consistency detected %s issues with paths/data and uids", number_of_issues)
+
+        except Exception, e:
+            log.exception(e)
+
+        scan_progress_message(True, fix, current_cycle, "global_catalog RIDs consistency", number_of_issues, chunk_number, log)
+            
+        if fix and (number_of_issues > 0):
+            log.info("Attempting to correct issues found Paths/UIDs check found %s issues - attempting to remove", len(broken_rids))
+            for item in broken_rids:
+                try:
+                    catalog_reference.paths.pop(item)
+                    catalog_reference.data.pop(item)
+                except:
+                    pass
+
+            catalog_reference._p_changed = True
+            transaction.commit()
+        else:
+            # Final transaction.abort() to try and free up used memory
+            log.debug("Calling transaction.abort() to minimize memory footprint")
+            transaction.abort()
+
+    if create_events:
+        if number_of_issues > 0:
+            eventSummaryMsg = "'%s' - %d Error(s) Detected (%d total items)" % \
+                                  ('global_catalog_RIDs', number_of_issues, number_of_items)
+            eventSeverity = 4
+        else:
+            eventSummaryMsg = "'%s' - No Errors Detected (%d total items)" % \
+                                  ('global_catalog_RIDs', number_of_items)
+            eventSeverity = 1
+
+        dmd.ZenEventManager.sendEvent({
+            'device'        : 'localhost',
+            'summary'       : eventSummaryMsg,
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
+            'severity'      : eventSeverity,
+            'eventClass'    : '/Status',
+            'eventKey'      : "global_catalog_RIDs",
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.global_catalog_RIDs",
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
+            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+        })
+
+
+def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_events):
+    """Scan through a catalog looking for broken references"""
+
+    # Fix for ZEN-14717 (only for global_catalog)
+    if (catalog_name == 'global_catalog'):
+        global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_events)
+
+    catalog = catalog_list[0]
+    initial_catalog_size = catalog_list[1]
+    number_of_issues = -1
+    current_cycle = 0
+    if not fix:
+        max_cycles = 1
+
+    print("[%s] Examining %-35s (%d Objects)" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), catalog_name, initial_catalog_size))
+    log.info("Examining %s catalog with %d objects" % (catalog_name, initial_catalog_size))
 
     while ((current_cycle < max_cycles) and (number_of_issues != 0)):
         number_of_issues = 0
@@ -179,9 +273,28 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
 
         scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, chunk_number, log)
 
-    if number_of_issues > 0:
-        return True
-    return False
+    if create_events:
+        if number_of_issues > 0:
+            eventSummaryMsg = "'%s' - %d Error(s) Detected (%d total items)" % (catalog_name, number_of_issues, initial_catalog_size)
+            eventSeverity = 4  
+        else:
+            eventSummaryMsg = "'%s' - No Errors Detected (%d total items)" % (catalog_name, initial_catalog_size)
+            eventSeverity = 1
+     
+        dmd.ZenEventManager.sendEvent({
+            'device'        : 'localhost',
+            'summary'       : eventSummaryMsg,
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
+            'severity'      : eventSeverity,
+            'eventClass'    : '/Status',
+            'eventKey'      : "%s" % (catalog_name),
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.%s" % (catalog_name),
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
+            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+        })
+
+    return (number_of_issues != 0)
 
 
 def build_catalog_dict(dmd, log):
@@ -219,7 +332,7 @@ def build_catalog_dict(dmd, log):
         'ZenLinkManager.layer2_catalog': 'dmd.ZenLinkManager.layer2_catalog',
         'ZenLinkManager.layer3_catalog': 'dmd.ZenLinkManager.layer3_catalog',
         'zenPackPersistence': 'dmd.zenPackPersistence'
-        }
+    }
 
     log.debug("Checking %d supported catalogs for (presence, not empty)" % (len(catalogs_to_check)))
 
@@ -260,13 +373,14 @@ def parse_options():
                         help="output all supported catalogs")
     parser.add_argument("-c", "--catalog", action="store", default="",
                         help="only scan/fix specified catalog")
+    parser.add_argument("-e", "--events", action="store_true", default=False,
+                        help="create Zenoss events with status")
 
     return vars(parser.parse_args())
 
 
 def main():
-    '''Scans catalogs for broken references.  If --fix, attempts to remove broken references.
-       Builds list of available non-empty catalogs.  If --reindex, attempts dmd.reIndex().'''
+    """Scans catalogs for broken references.  If --fix, attempts to remove broken references."""
 
     execution_start = time.time()
     cli_options = parse_options()
@@ -299,7 +413,7 @@ def main():
             if cli_options['catalog'] in present_catalog_dict.keys():
             # Catalog provided as parameter is present - scan just that catalog
                 any_issue = scan_catalog(cli_options['catalog'], present_catalog_dict[cli_options['catalog']],
-                                         cli_options['fix'], cli_options['cycles'], dmd, log)
+                                         cli_options['fix'], cli_options['cycles'], dmd, log, cli_options['events'])
             else:
                 unrecognized_catalog = True
                 print("Catalog '%s' unrecognized - unable to scan" % (cli_options['catalog']))
@@ -308,13 +422,34 @@ def main():
         # Else scan for all catalogs in present_catalog_dict
             for catalog in present_catalog_dict.keys():
                 any_issue = scan_catalog(catalog, present_catalog_dict[catalog], cli_options['fix'],
-                                         cli_options['cycles'], dmd, log) or any_issue
+                                         cli_options['cycles'], dmd, log, cli_options['events']) or any_issue
 
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),
                                                  datetime.timedelta(seconds=int(time.time() - execution_start))))
     log.info("zencatalogscan completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
+
+    if cli_options['events']:
+        if any_issue: 
+            eventSummaryMsg = "zencatalogscan encoutered errors (took %1.2f seconds)" % (time.time() - execution_start)
+            eventSeverity = 4 
+        else:
+            eventSummaryMsg = "zencatalogscan completed without errors (took %1.2f seconds)" % (time.time() - execution_start)
+            eventSeverity = 2
+
+        dmd.ZenEventManager.sendEvent({
+            'device'        : 'localhost',
+            'summary'       : eventSummaryMsg,
+            'message'       : eventSummaryMsg,
+            'component'     : 'zenoss_toolbox',
+            'severity'      : eventSeverity,
+            'eventClass'    : '/Status',
+            'eventKey'      : "execution_status",
+            'dedupid'       : "zenoss_toolbox_zencatalogscan.execution_status",
+            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
+            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
+        })
 
     if any_issue and not cli_options['fix']:
         print("** WARNING ** Issues were detected - Consult KB article at")

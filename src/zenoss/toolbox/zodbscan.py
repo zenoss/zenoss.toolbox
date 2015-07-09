@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.1"
+scriptVersion = "1.0.3"
 
 import Globals
 import argparse
@@ -72,9 +72,10 @@ def configure_logging(scriptname):
     toolbox_log.addHandler(handler)
 
     # Print initialization string to console, log status to logfile
-    print("\n[%s] Initializing %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, log_file_name))
-    toolbox_log.info("Initializing %s" % (scriptname))
+    toolbox_log.info("############################################################")
+    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
+    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
     return toolbox_log
 
 
@@ -236,8 +237,8 @@ class PKEReporter(object):
             pass
         if not name:
             # Now load up the child and see if it has an id
-            child = self._conn[child_oid]
             try:
+                child = self._conn[child_oid]
                 name = child.id
             except Exception:
                 try:
@@ -370,7 +371,7 @@ Refers to a missing object:
 def parse_options():
     """Defines command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans zodb for dangling references. Additional documentation at "
+                                     description="Scans ZODB for dangling references. Additional documentation at "
                                                   "https://support.zenoss.com/hc/en-us/articles/203118175")
 
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
@@ -379,7 +380,7 @@ def parse_options():
 
 
 def main():
-    """Scans through zodb hierarchy checking objects for dangling references"""
+    """Scans through ZODB checking objects for dangling references"""
 
     execution_start = time.time()
     sys.path.append ("/opt/zenoss/Products/ZenModel")               # From ZEN-12160
@@ -390,16 +391,15 @@ def main():
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
-    #logging.getLogger('relstorage').setLevel(logging.CRITICAL)
-    #logging.getLogger('ZODB.Connection').setLevel(logging.CRITICAL)
-        
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not get_lock("zenoss.toolbox", log):
         sys.exit(1)
 
     number_of_issues = Counter(0)
 
-    PKEReporter('zodb').run(log, number_of_issues)
+    zodb_name = getGlobalConfiguration().get("zodb-db", "zodb")
+
+    PKEReporter(zodb_name).run(log, number_of_issues)
     log.info("%d Dangling References were detected" % (number_of_issues.value()))
 
     print("[%s] Execution finished in %s\n" % (strftime("%Y-%m-%d %H:%M:%S", localtime()),

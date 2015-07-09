@@ -36,3 +36,7 @@ nosetests.xml
 
 # OSX Files
 .DS_Store
+.ropeproject
+
+# VI temp files
+*.swp

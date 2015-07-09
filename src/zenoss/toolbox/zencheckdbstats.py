@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-SCRIPT_VERSION = "0.9.4"
+scriptVersion = "0.9.5"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 import argparse
@@ -59,9 +59,10 @@ def configure_logging(scriptname):
     handler.setLevel(logging.DEBUG)
     toolbox_log.addHandler(handler)
     # Print initialization string to console, log status to logfile
-    print("\n[%s] Initializing %s (detailed log at %s)\n" %
-          (time.strftime(TIME_FORMAT), scriptname, log_file_name))
-    toolbox_log.info("Initializing %s" % (scriptname))
+    toolbox_log.info("############################################################")
+    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
+    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
     return toolbox_log
 
 
@@ -122,8 +123,8 @@ def connect_to_mysql(global_conf_dict, log):
         if os.environ['ZENDSHOME']:   # If ZENDSHOME is set, assume running with ZenDS
             if global_conf_dict['zodb-host'] == 'localhost':
                 mysql_connection = MySQLdb.connect(unix_socket=global_conf_dict['zodb-socket'],
-                                                   user=global_conf_dict['zodb-user'],
-                                                   passwd=global_conf_dict['zodb-password'],
+                                                   user=global_conf_dict['zodb-admin-user'],
+                                                   passwd=global_conf_dict['zodb-admin-password'],
                                                    db=global_conf_dict['zodb-db'])
             else:
                 mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
@@ -132,8 +133,8 @@ def connect_to_mysql(global_conf_dict, log):
                                                    db=global_conf_dict['zodb-db'])
         else:    # Assume MySQL (with no customized zodb-socket)
             mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
-                                               user=global_conf_dict['zodb-user'],
-                                               passwd=global_conf_dict['zodb-password'],
+                                               user=global_conf_dict['zodb-admin-user'],
+                                               passwd=global_conf_dict['zodb-admin-password'],
                                                db=global_conf_dict['zodb-db'])
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
@@ -211,7 +212,7 @@ def log_MySQL_variables(mysql_connection, log):
 
 def parse_options():
     """Defines command-line options and defaults for script """
-    parser = argparse.ArgumentParser(version=SCRIPT_VERSION, description="Gathers performance-related information "
+    parser = argparse.ArgumentParser(version=scriptVersion, description="Gathers performance-related information "
                                      "about your database.  Documentation at https://support.zenoss.com/hc/en-us/articles/TBD")
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (NOTE: lots of output)")
@@ -231,8 +232,6 @@ def main():
     cli_options = parse_options()
     log = configure_logging('zencheckdbstats')
     log.info("Command line options: %s" % (cli_options))
-    if cli_options['debug']:
-        log.setLevel(logging.DEBUG)
 
     # Attempt to get the zenoss.toolbox.checkdbstats lock before any actions performed
     if not get_lock("zenoss.toolbox.checkdbstats", log):
@@ -240,6 +239,14 @@ def main():
 
     # Load up the contents of global.conf for using with MySQL
     global_conf_dict = parse_global_conf(os.environ['ZENHOME'] + '/etc/global.conf', log)
+
+    if cli_options['level3']:
+        cli_options['times'] = 120
+        cli_options['gap'] = 60
+        cli_options['debug'] = True
+
+    if cli_options['debug']:
+        log.setLevel(logging.DEBUG)
 
     # If running in debug, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)
     if cli_options['debug']:
@@ -259,11 +266,6 @@ def main():
 
     sample_count = 0
     mysql_results_list = []
-
-    if cli_options['level3']:
-        cli_options['times'] = 120
-        cli_options['gap'] = 60
-        cli_options['debug'] = True
 
     while sample_count < cli_options['times']:
         sample_count += 1

@@ -1,6 +1,18 @@
 Changelog
 =========
 
+0.7.0
+--------------------
+ * Fixed ZEN-17829: Toolbox tools don't output version, status to screen, log file
+ * Fixed ZEN-17615: zodbscan fails to process PKE edge case
+ * Fixed ZEN-17551: zencheckdbstats must use zodb-admin-user, password
+ * Fixed ZEN-17616: zencheckdbstats doesn't switch to debug with -l3 flag
+ * Fixed ZEN-14717: zencatalogscan must check for rids not in both paths and uids
+ * Fixed ZEN-16505: Add an exit code of 1 if issues are detected in zenindextool
+ * Fixed ZEN-18634: zencatalogscan should create events within Zenoss
+ * Fixed ZEN-17875: zodbscan doesn't work with alternate zodb-db settings
+ * Fixed ZEN-13853: findposkeyerror should have the option to cycle
+
 0.6.0
 --------------------
  * Fixed ZEN-17179: Create toolbox tool for zencheckdbstats
