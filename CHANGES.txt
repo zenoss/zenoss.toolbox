@@ -11,6 +11,7 @@ Changelog
  * Fixed ZEN-16505: Add an exit code of 1 if issues are detected in zenindextool
  * Fixed ZEN-18634: zencatalogscan should create events within Zenoss
  * Fixed ZEN-17875: zodbscan doesn't work with alternate zodb-db settings
+ * Fixed ZEN-13853: findposkeyerror should have the option to cycle
 
 0.6.0
 --------------------
