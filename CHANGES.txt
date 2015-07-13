@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.7.1
+--------------------
+ * Fixed ZEN-18703: findposkeyerror cycle needs to consider number of repairs
+
 0.7.0
 --------------------
  * Fixed ZEN-17829: Toolbox tools don't output version, status to screen, log file

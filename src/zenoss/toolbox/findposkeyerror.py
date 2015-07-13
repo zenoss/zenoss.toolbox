@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.6.4"
+scriptVersion = "1.6.5"
 
 import abc
 import argparse
@@ -301,8 +301,9 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
     if not attempt_fix:
         max_cycles = 1
     number_of_issues = -1
+    number_of_repairs = -1
 
-    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
+    while ((current_cycle < max_cycles) and (number_of_issues != 0) and (number_of_repairs != 0)):
         # Objects that will have their children traversed are stored in 'nodes'
         print
         current_cycle += 1
@@ -400,6 +401,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
         progress_bar(counters['item_count'].value(), counters['error_count'].value(),
                      counters['repair_count'].value(), attempt_fix, current_cycle)
         number_of_issues = counters['error_count'].value()
+        number_of_repairs = counters['repair_count'].value()
 
 
 def parse_options():
