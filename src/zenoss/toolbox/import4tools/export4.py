@@ -45,13 +45,14 @@ class GL:
 def parse_arguments(thetime):
     parser = argparse.ArgumentParser(description="4.x export script")
     default_export_filename = '4x-export-%s.tar' % thetime
-    parser.add_argument('-f', '--filename', help='specify name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=default_export_filename)
+    dryRunGroup = parser.add_mutually_exclusive_group()
+    dryRunGroup.add_argument('-f', '--filename', help='specify name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=default_export_filename)
+    dryRunGroup.add_argument('--dry-run', help='perform a dry run of the backup, and report the estimated required disk space for the backup', action='store_true')
     parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
     parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
     parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_true', default=False)
     parser.add_argument('-d', '--debug', help="debug mode", action='store_true', default=False)
     GL.args = parser.parse_args()
-    return GL.args
 
 
 def get_collector_list():
@@ -79,8 +80,8 @@ def get_collector_list():
     return collectors
 
 
-def backup_remote_collectors(args, thetime, backup_dir):
-    if args.no_perfdata:
+def backup_remote_collectors(thetime, backup_dir):
+    if GL.args.no_perfdata:
         return []
     remote_backups = []
     sys.stderr.write('Getting remote collector information.\n')
@@ -102,15 +103,15 @@ def backup_remote_collectors(args, thetime, backup_dir):
     return remote_backups
 
 
-def backup_master(backup_dir, args):
+def backup_master(backup_dir):
     print 'making new backup ...'
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
-    if args.no_zodb:
+    if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
-    if args.no_eventsdb:
+    if GL.args.no_eventsdb:
         zbcommand.append('--no-eventsdb')
-    if args.no_perfdata:
+    if GL.args.no_perfdata:
         zbcommand.append('--no-perfdata')
 
     try:
@@ -118,7 +119,7 @@ def backup_master(backup_dir, args):
                 "It will be restarted once the backup completes.  "
                 "Press ENTER to continue or <CTRL+C> to quit\n")
     except KeyboardInterrupt:
-        sys.exit(1)
+        raise
 
     subprocess.check_call(['zenoss', 'stop'])
     try:
@@ -190,59 +191,64 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
     print 'export successful. file is %s' % tar_file
 
 
-def main():
-    thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-    args = parse_arguments(thetime)
-
-    print 'Running validations'
-    ValidationRunner(parseVRunnerArgs(["zenpack"])).run()
-
-    tar_file = args.filename
-
-    # check accessibility of the tar file
-    print 'Checking accessibility of %s ...' % tar_file
-    if os.path.isfile(tar_file):
-        os.remove(tar_file)
-    try:
-        with open(tar_file, 'w'):
-            print '%s is accessible ...' % tar_file
-    except:
-        print 'Cannot open %s! please check accessibility ...' % tar_file
-        sys.exit(1)
-
-    if not os.path.isdir(Config.backup_dir):
-        os.makedirs(Config.backup_dir)
-
-    GL.dmd = ZenScriptBase(noopts=True, connect=True).dmd
-
-    print 'Checking platform ...'
-    try:
-        ucsx = None
-        ucsx = GL.dmd.ZenPackManager.packs._getOb('ZenPacks.zenoss.UCSXSkin')
-    except:
-        pass
-
-    if ucsx:
-        if ucsx.version in Config.ucsx_vers:
-            print 'UCSPM version %s is supported.' % ucsx.version
-        else:
-            print 'UCSPM version %s is not supported ...' % ucsx.version
-            sys.exit(1)
-
-    remote_backups = backup_remote_collectors(args, thetime, Config.backup_dir)
-    master_backup = backup_master(Config.backup_dir, args)
-
-    export_component_list()
-    export_dmduuid()
-    genmd5(master_backup)
-    make_export_tar(args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
-
-
-if __name__ == '__main__':
-    try:
-        main()
-
-    finally:
-        # cleanup the temp dir
+def cleanup():
+    if GL.args:
         if not GL.args.debug:
             shutil.rmtree(Config.tmp_dir)
+        if GL.args.filename:
+            os.remove(GL.args.filename)
+
+
+def main():
+    try:
+        thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        parse_arguments(thetime)
+
+        print 'Running validations'
+        ValidationRunner(parseVRunnerArgs(["zenpack"])).run()
+
+        tar_file = GL.args.filename
+
+        # check accessibility of the tar file
+        print 'Checking accessibility of %s ...' % tar_file
+        if os.path.isfile(tar_file):
+            os.remove(tar_file)
+        try:
+            with open(tar_file, 'w'):
+                print '%s is accessible ...' % tar_file
+        except:
+            print 'Cannot open %s! please check accessibility ...' % tar_file
+            sys.exit(1)
+
+        if not os.path.isdir(Config.backup_dir):
+            os.makedirs(Config.backup_dir)
+
+        GL.dmd = ZenScriptBase(noopts=True, connect=True).dmd
+
+        print 'Checking platform ...'
+        try:
+            ucsx = None
+            ucsx = GL.dmd.ZenPackManager.packs._getOb('ZenPacks.zenoss.UCSXSkin')
+        except:
+            pass
+
+        if ucsx:
+            if ucsx.version in Config.ucsx_vers:
+                print 'UCSPM version %s is supported.' % ucsx.version
+            else:
+                print 'UCSPM version %s is not supported ...' % ucsx.version
+                sys.exit(1)
+
+        remote_backups = backup_remote_collectors(thetime, Config.backup_dir)
+        master_backup = backup_master(Config.backup_dir)
+
+        export_component_list()
+        export_dmduuid()
+        genmd5(master_backup)
+        make_export_tar(GL.args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
+
+    except (Exception, KeyboardInterrupt, SystemExit):
+        cleanup()
+
+if __name__ == '__main__':
+    main()
