@@ -208,8 +208,7 @@ def cleanup(error=False):
 
 def dryRun():
     """
-    Perform a dry run of backup tasks.  Report back the estimated disk space
-    needed for the backup.  Zenoss can be running for this.
+    Report back the estimated disk space needed for the backup.  Zenoss can be running for this.
     """
     backupSize = 0 # estimated size of backup in MB
     # skip remote collectors (TODO)
@@ -218,19 +217,19 @@ def dryRun():
 
     # Global Catalog (if it exists)
     if os.path.exists('/opt/zenoss/var/zencatalogservice'):
-        catalogDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/var/zencatalogservice 2>/dev/null | wc -c', shell=True)
-        catalogDataSize = (int(catalogDataSize.strip()) / 1000000) + 1
+        catalogDataSize = subprocess.check_output("du -sc /opt/zenoss/var/zencatalogservice | awk 'END{print $1;}'", shell=True)
+        catalogDataSize = int(int(catalogDataSize.strip()) / 1000) + 1
         backupSize += catalogDataSize
         print 'Local catalog data estimated to need %d MB' % catalogDataSize
 
     # ZenPacks
-    print 'Calculating space needed for ZenPacks'
-    zenpackDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/ZenPacks 2>/dev/null | wc -c', shell=True)
-    zenpackDataSize = (int(zenpackDataSize.strip()) / 1000000) + 1
+    zenpackDataSize = subprocess.check_output("du -sc /opt/zenoss/ZenPacks | awk 'END{print $1;}'", shell=True)
+    zenpackDataSize = int(int(zenpackDataSize.strip()) / 1000) + 1
     backupSize += zenpackDataSize
     print 'Local zenpack data estimated to need %d MB' % zenpackDataSize
 
-    # DB estimate (does not include routines, but it's very fast)
+    # DB estimate (does not include routines, but it's very fast).  Grabs table
+    # sizes from information_schema for the given DB
     def getDBSize(db, dbName=None):
         if db not in ('zodb', 'zep'):
             print "ERROR: Bad database string: %s" % db
@@ -240,8 +239,7 @@ def dryRun():
         if not user:
             print 'ERROR: Unable to determine admin db user for %s' % db
             sys,exit(1)
-        #cmd = ['mysql', '-s', '--skip-column-names','-u%s' % str(user)]
-        cmd = ['mysqldump', '--routines', '--single-transaction', '--triggers', '-u%s' % str(user)]
+        cmd = ['mysql', '-s', '--skip-column-names','-u%s' % str(user)]
         host = globalSettings.get('%s-host' % db, None)
         if host and host != 'localhost':
             cmd.append('-h%s' % str(host))
@@ -257,42 +255,37 @@ def dryRun():
             print 'ERROR: Unable to locate database name in global config'
             sys.exit(1)
 
-        cmd.append(dbName)
-        cmd.extend(['|', 'gzip', '|', 'wc', '-c'])
+        cmd.append('-e')
+        selectStr = "\"SELECT Data_BB / POWER(1024,2) FROM (SELECT SUM(data_length) Data_BB FROM information_schema.tables WHERE table_schema = '%s') A;\"" % dbName
+        cmd.append(selectStr)
 
-        #cmd.append('-e')
-        #selectStr = "SELECT Data_BB / POWER(1024,2) FROM (SELECT SUM(data_length) Data_BB FROM information_schema.tables WHERE table_schema = '%s') A;" % dbName;
-        #cmd.append(selectStr)
-
-        DBSize = (int(float(subprocess.check_output(' '.join(cmd), shell=True).strip())) / 1000000) + 1
+        DBSize = int(float(subprocess.check_output(' '.join(cmd), shell=True).strip())) + 1
         return DBSize
 
     # ZEP db
-    zepDBSize = getDBSize('zep')
+    zepDBSize = int(getDBSize('zep') * .05) + 1
     backupSize += zepDBSize
     print 'Estimated zeneventserver database dump size is %d MB' % zepDBSize
 
     # ZODB db
-    zodbDBSize = getDBSize('zodb')
+    zodbDBSize = int(getDBSize('zodb') * .1) + 1
     backupSize += zodbDBSize
     print 'Estimated zodb database dump size is %d MB' % zodbDBSize
 
     # ZODB session db
-    zodbSessionDBSize = getDBSize('zodb', dbName='zodb_session')
+    zodbSessionDBSize = int(getDBSize('zodb', dbName='zodb_session') * .05) + 1
     backupSize += zodbSessionDBSize
-    print 'Estimated zodb db dump size is %d MB' % zodbSessionDBSize
+    print 'Estimated zodb session db dump size is %d MB' % zodbSessionDBSize
 
     # ZEP indexes
-    print 'Calculating space needed for zeneventserver indexes'
-    zepIndexDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/var/zeneventserver/index 2>/dev/null| wc -c', shell=True)
-    zepIndexDataSize = (int(zepIndexDataSize.strip()) / 1000000) + 1
+    zepIndexDataSize = subprocess.check_output("du -sc /opt/zenoss/var/zeneventserver/index | awk 'END{print $1;}'", shell=True)
+    zepIndexDataSize = int(int(zepIndexDataSize.strip()) / 1000) + 1
     backupSize += zepIndexDataSize
     print 'Zeneventserver indexes estimated to need %d MB' % zepIndexDataSize
 
-    # Local perf data (gzipped, UCSPM specific)
-    print 'Calculating space needed for local performance data'
-    perfDataSize = subprocess.check_output('tar --warning=file-changed -czf - /opt/zenoss/perf 2>/dev/null| wc -c', shell=True)
-    perfDataSize = (int(perfDataSize.strip()) / 1000000) + 1
+    # Local perf data
+    perfDataSize = subprocess.check_output("du -sc /opt/zenoss/perf | awk 'END{print $1;}'", shell=True)
+    perfDataSize = int(int(perfDataSize.strip()) / 1000) + 1
     backupSize += perfDataSize
     print 'Local performance data estimated to need %d MB' % perfDataSize
 
@@ -300,7 +293,7 @@ def dryRun():
     # needs double
     backupSize *= 2
 
-    print 'Total estimated free space needed for export is %0d MB' % backupSize
+    print 'Total estimated free space needed for export is up to %0d MB' % backupSize
 
 
 
@@ -310,7 +303,7 @@ def main():
         parse_arguments(thetime)
 
         if GL.args.dry_run:
-            print 'Performing dry run of backup'
+            print 'Calculating free space needed for backup'
             dryRun()
             sys.exit()
 
