@@ -25,6 +25,7 @@ import Globals
 from Products.ZenUtils.Utils import unused
 unused(Globals)
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from Products.ZenUtils.GlobalConfig import globalConfToDict
 
 
 class Config:
@@ -191,18 +192,127 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
     print 'export successful. file is %s' % tar_file
 
 
-def cleanup():
+def cleanup(error=False):
     if GL.args:
         if not GL.args.debug:
-            shutil.rmtree(Config.tmp_dir)
-        if GL.args.filename:
-            os.remove(GL.args.filename)
+            try:
+                shutil.rmtree(Config.tmp_dir)
+            except:
+                pass
+        if GL.args.filename and error:
+            try:
+                os.remove(GL.args.filename)
+            except:
+                pass
+
+
+def dryRun():
+    """
+    Perform a dry run of backup tasks.  Report back the estimated disk space
+    needed for the backup.  Zenoss can be running for this.
+    """
+    backupSize = 0 # estimated size of backup in MB
+    # skip remote collectors (TODO)
+    backupSize += 5 # md5, dmd_uuid, flexera, componentList
+    backupSize += 10 # bin, etc, backup.settings
+
+    # Global Catalog (if it exists)
+    if os.path.exists('/opt/zenoss/var/zencatalogservice'):
+        catalogDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/var/zencatalogservice 2>/dev/null | wc -c', shell=True)
+        catalogDataSize = (int(catalogDataSize.strip()) / 1000000) + 1
+        backupSize += catalogDataSize
+        print 'Local catalog data estimated to need %d MB' % catalogDataSize
+
+    # ZenPacks
+    print 'Calculating space needed for ZenPacks'
+    zenpackDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/ZenPacks 2>/dev/null | wc -c', shell=True)
+    zenpackDataSize = (int(zenpackDataSize.strip()) / 1000000) + 1
+    backupSize += zenpackDataSize
+    print 'Local zenpack data estimated to need %d MB' % zenpackDataSize
+
+    # DB estimate (does not include routines, but it's very fast)
+    def getDBSize(db, dbName=None):
+        if db not in ('zodb', 'zep'):
+            print "ERROR: Bad database string: %s" % db
+            sys.exit(1)
+        globalSettings = globalConfToDict()
+        user = globalSettings.get('%s-admin-user' % db, None)
+        if not user:
+            print 'ERROR: Unable to determine admin db user for %s' % db
+            sys,exit(1)
+        #cmd = ['mysql', '-s', '--skip-column-names','-u%s' % str(user)]
+        cmd = ['mysqldump', '--routines', '--single-transaction', '--triggers', '-u%s' % str(user)]
+        host = globalSettings.get('%s-host' % db, None)
+        if host and host != 'localhost':
+            cmd.append('-h%s' % str(host))
+        port = globalSettings.get('%s-port' % db, None)
+        if port and str(port) != '3306':
+            cmd.append('--port=%s' % str(port))
+        cred = globalSettings.get('%s-admin-password' % db, None)
+        if cred:
+            cmd.append('-p%s' % str(cred))
+        if not dbName:
+            dbName = globalSettings.get('%s-db' % db, None) # Save this for later
+        if not dbName:
+            print 'ERROR: Unable to locate database name in global config'
+            sys.exit(1)
+
+        cmd.append(dbName)
+        cmd.extend(['|', 'gzip', '|', 'wc', '-c'])
+
+        #cmd.append('-e')
+        #selectStr = "SELECT Data_BB / POWER(1024,2) FROM (SELECT SUM(data_length) Data_BB FROM information_schema.tables WHERE table_schema = '%s') A;" % dbName;
+        #cmd.append(selectStr)
+
+        DBSize = (int(float(subprocess.check_output(' '.join(cmd), shell=True).strip())) / 1000000) + 1
+        return DBSize
+
+    # ZEP db
+    zepDBSize = getDBSize('zep')
+    backupSize += zepDBSize
+    print 'Estimated zeneventserver database dump size is %d MB' % zepDBSize
+
+    # ZODB db
+    zodbDBSize = getDBSize('zodb')
+    backupSize += zodbDBSize
+    print 'Estimated zodb database dump size is %d MB' % zodbDBSize
+
+    # ZODB session db
+    zodbSessionDBSize = getDBSize('zodb', dbName='zodb_session')
+    backupSize += zodbSessionDBSize
+    print 'Estimated zodb db dump size is %d MB' % zodbSessionDBSize
+
+    # ZEP indexes
+    print 'Calculating space needed for zeneventserver indexes'
+    zepIndexDataSize = subprocess.check_output('tar --warning=file-changed -cf - /opt/zenoss/var/zeneventserver/index 2>/dev/null| wc -c', shell=True)
+    zepIndexDataSize = (int(zepIndexDataSize.strip()) / 1000000) + 1
+    backupSize += zepIndexDataSize
+    print 'Zeneventserver indexes estimated to need %d MB' % zepIndexDataSize
+
+    # Local perf data (gzipped, UCSPM specific)
+    print 'Calculating space needed for local performance data'
+    perfDataSize = subprocess.check_output('tar --warning=file-changed -czf - /opt/zenoss/perf 2>/dev/null| wc -c', shell=True)
+    perfDataSize = (int(perfDataSize.strip()) / 1000000) + 1
+    backupSize += perfDataSize
+    print 'Local performance data estimated to need %d MB' % perfDataSize
+
+    # After staging everything individually, it gets tarred up, so at worst, it
+    # needs double
+    backupSize *= 2
+
+    print 'Total estimated free space needed for export is %0d MB' % backupSize
+
 
 
 def main():
     try:
         thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         parse_arguments(thetime)
+
+        if GL.args.dry_run:
+            print 'Performing dry run of backup'
+            dryRun()
+            sys.exit()
 
         print 'Running validations'
         ValidationRunner(parseVRunnerArgs(["zenpack"])).run()
@@ -247,8 +357,13 @@ def main():
         genmd5(master_backup)
         make_export_tar(GL.args.filename, Config.components_filename, remote_backups, master_backup, Config.flexera_dir)
 
-    except (Exception, KeyboardInterrupt, SystemExit):
-        cleanup()
+    except (Exception, KeyboardInterrupt, SystemExit) as e:
+        print str(e)
+        cleanup(error=True)
+        sys.exit(1)
+
+    finally:
+        cleanup(error=False)
 
 if __name__ == '__main__':
     main()
