@@ -173,8 +173,17 @@ class ZenPackValidation(Import4Validation):
         for pack in dmd.ZenPackManager.packs():
             installedPacks.add(Pack(pack.id, pack.version))
 
-        # compare the sets
-        if installedPacks != manifestPacks:
+        # process dupes in manifestPacks
+        manifestPackNames = [pack.name for pack in manifestPacks]
+        manifestDupes = set(filter(lambda x: manifestPackNames.count(x.name) > 1, manifestPacks))
+
+        # compare the sets.  support duplicate packs in manifest, as long as we
+        # have one of them installed.  Make sure that the installed packs are a
+        # subset of the manifest packs AND manifestPacks.difference(installedPacks)
+        # contains only packs that have multiple versions on the manifest (AKA
+        # dupes, to support allowing a set of versions of a given pack)
+        if not (installedPacks <= manifestPacks and \
+                manifestPacks.difference(installedPacks) <= manifestDupes):
             log.error("Unexpected list of installed zenpacks found")
             log.error("Expected:")
             for pack in manifestPacks:
