@@ -308,7 +308,10 @@ def main():
             sys.exit()
 
         print 'Running validations'
-        ValidationRunner(parseVRunnerArgs(["zenpack"])).run()
+        validations = [ValidationRunner(parseVRunnerArgs(["zenpack"])).run()]
+        if any(validations):
+            print 'Validation(s) failed, aborting export process'
+            sys.exit(1)
 
         tar_file = GL.args.filename
 
