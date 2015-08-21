@@ -120,7 +120,7 @@ def log_zends_conf(filename, log):
 def connect_to_mysql(global_conf_dict, log):
     log.info("Opening connection to MySQL/ZenDS at %s" % global_conf_dict['zodb-host'])
     try:
-        if os.environ['ZENDSHOME']:   # If ZENDSHOME is set, assume running with ZenDS
+        if os.environ.get('ZENDSHOME'):   # If ZENDSHOME is set, assume running with ZenDS
             if global_conf_dict['zodb-host'] == 'localhost':
                 mysql_connection = MySQLdb.connect(unix_socket=global_conf_dict['zodb-socket'],
                                                    user=global_conf_dict['zodb-admin-user'],
