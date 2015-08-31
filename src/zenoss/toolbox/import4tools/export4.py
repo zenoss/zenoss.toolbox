@@ -325,19 +325,19 @@ def checkSpace():
     # check tmp dir
     avail = freeSpaceM(Config.tmp_dir)
     if avail < GL.backupSize:
-        print "Insufficient space in %s: %dM, %dM is needed." % (Config.tmp_dir, avail, GL.backupSize)
+        print "Insufficient space in %s: %d MB, %d MB is needed." % (Config.tmp_dir, avail, GL.backupSize)
         sys.exit(1)
     else:
-        print "Available space of %s: %dM." % (Config.tmp_dir, avail)
+        print "Available space of %s: %d MB." % (Config.tmp_dir, avail)
 
     # check target dir
     avail = freeSpaceM(GL.args.filename)
     dname = os.path.dirname(os.path.realpath(GL.args.filename))
     if avail < GL.backupSize:
-        print "Insufficient space in %s: %dM, %dM is needed." % (dname, avail, GL.backupSize)
+        print "Insufficient space in %s: %d MB, %d MB is needed." % (dname, avail, GL.backupSize)
         sys.exit(1)
     else:
-        print "Available space of %s: %dM." % (dname, avail)
+        print "Available space of %s: %d MB." % (dname, avail)
 
 
 def main():
