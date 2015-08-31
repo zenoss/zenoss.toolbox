@@ -132,7 +132,7 @@ def backup_master(backup_dir):
         zbcommand.append('--no-perfdata')
 
     try:
-        raw_input("All Zenoss services must stop to export data for migration.\n"
+        raw_input("All Zenoss services will be stopped to export data for migration.\n"
                 "The services are restarted once the backup completes.\n\n"
                 "Press ENTER to continue or <CTRL+C> to quit\n")
     except KeyboardInterrupt:
