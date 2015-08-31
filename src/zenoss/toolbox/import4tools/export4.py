@@ -13,6 +13,7 @@ scriptVersion = "0.9"
 import argparse
 import datetime
 import os
+import statvfs
 import subprocess
 import sys
 import tempfile
@@ -29,18 +30,30 @@ from Products.ZenUtils.GlobalConfig import globalConfToDict
 
 
 class Config:
-    tmp_dir =               tempfile.mkdtemp()
-    dmd_uuid_filename =     os.path.join(tmp_dir, 'dmd_uuid.txt')
-    components_filename =   os.path.join(tmp_dir, 'componentList.txt')
-    md5_filename =          os.path.join(tmp_dir, 'backup.md5')
+    tmp_dir =               None
     backup_dir =            os.path.join(os.environ['ZENHOME'], 'backups')
     flexera_dir =           os.path.join(os.environ['ZENHOME'], 'var', 'flexera')
     ucsx_vers =             ['1.1.0', '1.1.1']
+
+    dmd_uuid_filename =     'dmd_uuid.txt'
+    components_filename =   'componentList.txt'
+    md5_filename =          'backup.md5'
+
+    @classmethod
+    def init(cls, tdir):
+        if not tdir:
+            tdir = '/tmp'
+
+        cls.tmp_dir = tempfile.mkdtemp(dir=tdir)
+        cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
+        cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
+        cls.md5_filename =          os.path.join(cls.tmp_dir, 'backup.md5')
 
 
 class GL:
     dmd = 0
     args = 0
+    backupSize = 0
 
 
 def parse_arguments(thetime):
@@ -53,6 +66,7 @@ def parse_arguments(thetime):
     parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
     parser.add_argument('-p', '--no-perfdata', help="don't backup perf data (won't backup remote collectors unnecessarily).", action='store_true', default=False)
     parser.add_argument('-d', '--debug', help="debug mode", action='store_true', default=False)
+    parser.add_argument('--temp-dir', help='temporary directory for intermediate files', dest='temp_dir', action='store', default=None)
     GL.args = parser.parse_args()
 
 
@@ -108,6 +122,8 @@ def backup_master(backup_dir):
     print 'making new backup ...'
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
+    if GL.args.temp_dir:
+        zbcommand.append('--temp-dir=%s' % GL.args.temp_dir)
     if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
     if GL.args.no_eventsdb:
@@ -210,10 +226,10 @@ def dryRun():
     """
     Report back the estimated disk space needed for the backup.  Zenoss can be running for this.
     """
-    backupSize = 0 # estimated size of backup in MB
+    backupSize = 0      # estimated size of backup in MB
     # skip remote collectors (TODO)
-    backupSize += 5 # md5, dmd_uuid, flexera, componentList
-    backupSize += 10 # bin, etc, backup.settings
+    backupSize += 5     # md5, dmd_uuid, flexera, componentList
+    backupSize += 10    # bin, etc, backup.settings
 
     # Global Catalog (if it exists)
     if os.path.exists('/opt/zenoss/var/zencatalogservice'):
@@ -238,8 +254,8 @@ def dryRun():
         user = globalSettings.get('%s-admin-user' % db, None)
         if not user:
             print 'ERROR: Unable to determine admin db user for %s' % db
-            sys,exit(1)
-        cmd = ['mysql', '-s', '--skip-column-names','-u%s' % str(user)]
+            sys.exit(1)
+        cmd = ['mysql', '-s', '--skip-column-names', '-u%s' % str(user)]
         host = globalSettings.get('%s-host' % db, None)
         if host and host != 'localhost':
             cmd.append('-h%s' % str(host))
@@ -250,7 +266,7 @@ def dryRun():
         if cred:
             cmd.append('-p%s' % str(cred))
         if not dbName:
-            dbName = globalSettings.get('%s-db' % db, None) # Save this for later
+            dbName = globalSettings.get('%s-db' % db, None)     # Save this for later
         if not dbName:
             print 'ERROR: Unable to locate database name in global config'
             sys.exit(1)
@@ -292,15 +308,45 @@ def dryRun():
     # After staging everything individually, it gets tarred up, so at worst, it
     # needs double
     backupSize *= 2
+    GL.backupSize = backupSize
 
     print 'Total estimated free space needed for export is up to %0d MB' % backupSize
 
+
+def freeSpaceM(fname):
+    f = os.statvfs(fname)
+    size = (f[statvfs.F_BSIZE] * f[statvfs.F_BAVAIL]) / (1024*1024)
+    return size
+
+
+def checkSpace():
+    dryRun()
+
+    # check tmp dir
+    avail = freeSpaceM(Config.tmp_dir)
+    if avail < GL.backupSize:
+        print "Insufficient space in %s: %d MB, %d MB is needed." % (Config.tmp_dir, avail, GL.backupSize)
+        sys.exit(1)
+    else:
+        print "Available space of %s: %d MB." % (Config.tmp_dir, avail)
+
+    # check target dir
+    avail = freeSpaceM(GL.args.filename)
+    dname = os.path.dirname(os.path.realpath(GL.args.filename))
+    if avail < GL.backupSize:
+        print "Insufficient space in %s: %d MB, %d MB is needed." % (dname, avail, GL.backupSize)
+        sys.exit(1)
+    else:
+        print "Available space of %s: %d MB." % (dname, avail)
 
 
 def main():
     try:
         thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         parse_arguments(thetime)
+
+        # setup the temp_dir
+        Config.init(GL.args.temp_dir)
 
         if GL.args.dry_run:
             print 'Calculating free space needed for backup'
@@ -344,6 +390,10 @@ def main():
             else:
                 print 'UCSPM version %s is not supported ...' % ucsx.version
                 sys.exit(1)
+
+        # always do a dryRun to make sure the tmp and target dirs have
+        # sufficient space
+        checkSpace()
 
         remote_backups = backup_remote_collectors(thetime, Config.backup_dir)
         master_backup = backup_master(Config.backup_dir)
