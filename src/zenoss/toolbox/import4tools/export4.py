@@ -123,7 +123,7 @@ def backup_master(backup_dir):
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
     if GL.args.temp_dir:
-        zbcommand.append('--temp-dir=%s', GL.args.temp_dir)
+        zbcommand.append('--temp-dir=%s' % GL.args.temp_dir)
     if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
     if GL.args.no_eventsdb:
@@ -332,7 +332,7 @@ def checkSpace():
 
     # check target dir
     avail = freeSpaceM(GL.args.filename)
-    dname=os.path.dirname(os.path.realpath(GL.args.filename))
+    dname = os.path.dirname(os.path.realpath(GL.args.filename))
     if avail < GL.backupSize:
         print "Insufficient space in %s: %dM, %dM is needed." % (dname, avail, GL.backupSize)
         sys.exit(1)
