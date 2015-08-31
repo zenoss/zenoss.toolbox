@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.6.5"
+scriptVersion = "1.6.6"
 
 import abc
 import argparse
@@ -112,6 +112,10 @@ class Counter(object):
     def value(self):
         with self.lock:
             return self.val.value
+
+    def reset(self):
+        with self.lock:
+            self.val.value = 0
 
 
 def progress_bar(items, errors, repairs, fix_value, cycle):
@@ -308,11 +312,9 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
         print
         current_cycle += 1
         nodes = [topnode]
-        counters = {
-            'item_count': Counter(0),
-            'error_count': Counter(0),
-            'repair_count': Counter(0)
-            }
+        counters['item_count'].reset()
+        counters['error_count'].reset()
+        counters['repair_count'].reset()
         while nodes:
             node = nodes.pop(0)
             counters['item_count'].increment()
