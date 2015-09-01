@@ -361,6 +361,12 @@ def main():
 
         tar_file = GL.args.filename
 
+        # add .tar extension
+        fbase, fext = os.path.splitext(tar_file)
+        if fext != '.tar':
+            tar_file = tar_file + '.tar'
+            GL.args.filename = tar_file
+
         # check accessibility of the tar file
         print 'Checking accessibility of %s ...' % tar_file
         if os.path.isfile(tar_file):
