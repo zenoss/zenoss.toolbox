@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.7.0"
+scriptVersion = "1.7.1"
 
 import abc
 import argparse
@@ -387,6 +387,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
         # Objects that will have their children traversed are stored in 'nodes'
         print
         current_cycle += 1
+        log.info("## Beginning cycle %s of %s (potential)", current_cycle, max_cycles)
         nodes = [topnode]
         counters['item_count'].reset()
         counters['error_count'].reset()
@@ -480,6 +481,8 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                      counters['repair_count'].value(), attempt_fix, current_cycle)
         number_of_issues = counters['error_count'].value()
         number_of_repairs = counters['repair_count'].value()
+        log.info("findposkeyerror cycle %s examined %d objects, encountered %d errors, and attempted %d repairs",
+                  current_cycle, counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
 
 
 def parse_options():
@@ -548,8 +551,6 @@ def main():
     print("\n[%s] Execution finished in %s\n" %
           (strftime("%Y-%m-%d %H:%M:%S", localtime()),
            datetime.timedelta(seconds=int(time.time() - execution_start))))
-    log.info("findposkeyerror examined %d objects, encountered %d errors, and attempted %d repairs", 
-             counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
     log.info("findposkeyerror completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
 
