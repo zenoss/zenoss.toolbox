@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.6.6"
+scriptVersion = "1.7.0"
 
 import abc
 import argparse
@@ -215,8 +215,7 @@ class SearchManagerFixer(Fixer):
 class ComponentSearchFixer(Fixer):
     """
     ComponentSearchFixer fixes ComponentSearch POSKeyErrors like:
-        POSKeyError: 0x070039e0 on attribute 'componentSearch' of
-          app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
+        POSKeyError: 0x070039e0 on attribute 'componentSearch' of app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
     """
 
     def fixable(self, ex, objId, parentPath, dmd, log):
@@ -248,7 +247,84 @@ class ComponentSearchFixer(Fixer):
         transaction.commit()
 
 
-_fixits = [RelFixer(), SearchManagerFixer(), ComponentSearchFixer(), ]
+class OperatingSystemFixer(Fixer):
+    """
+    OperatingSystemFixer fixes 'os' POSKeyErrors like:
+        POSKeyError: 0x9782ff on attribute 'os' of /zport/dmd/Devices/Web/SSL/devices/YOUR_DEVICE_HERE
+    """
+
+    def fixable(self, ex, objId, parentPath, dmd, log):
+        """ Return True if this object can fix the exception.  """
+
+        if objId != 'os':
+            return None
+
+        parent = dmd.getObjByPath(parentPath)
+        obj = parent._getOb(objId)
+        exOID = getOID(ex)
+        relOID = getPOID(obj)
+        if exOID == relOID:
+            return lambda: self._fix(exOID, parent, dmd, log)
+
+        return None
+
+    def _fix(self, exOID, parent, dmd, log):
+        """ Attempt to remove and recreate the os object """
+        from Products.ZenModel.OperatingSystem import OperatingSystem
+        try:
+            log.info("Repairing 'os' component on %s - please remodel after script completes" % (parent))
+            parent._delOb('os')
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+        try:
+            temp_os_comp = OperatingSystem()
+            parent._setObject(temp_os_comp.id, temp_os_comp)
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+
+class HardwareFixer(Fixer):
+    """
+    HardwareFixer fixes 'hw' POSKeyErrors like:
+        POSKeyError: 0x9782fb on attribute 'hw' of /zport/dmd/Devices/Web/SSL/devices/YOUR_DEVICE_HERE
+    """
+
+    def fixable(self, ex, objId, parentPath, dmd, log):
+        """ Return True if this object can fix the exception.  """
+
+        if objId != 'hw':
+            return None
+
+        parent = dmd.getObjByPath(parentPath)
+        obj = parent._getOb(objId)
+        exOID = getOID(ex)
+        relOID = getPOID(obj)
+        if exOID == relOID:
+            return lambda: self._fix(exOID, parent, dmd, log)
+
+        return None
+
+    def _fix(self, exOID, parent, dmd, log):
+        """ Attempt to remove and recreate the hw object """
+        from Products.ZenModel.DeviceHW import DeviceHW
+        try:
+            log.info("Repairing 'hw' component on %s - please remodel after script completes" % (parent))
+            parent._delOb('hw')
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+        try:
+            temp_hw_comp = DeviceHW()
+            parent._setObject(temp_hw_comp.id, temp_hw_comp)
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+_fixits = [RelFixer(), SearchManagerFixer(), ComponentSearchFixer(), OperatingSystemFixer(), HardwareFixer(), ]
 
 
 def _getEdges(node):
