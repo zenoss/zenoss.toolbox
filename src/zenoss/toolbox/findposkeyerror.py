@@ -334,21 +334,23 @@ def _getEdges(node, path_string, attempt_fix, counters, log):
 
     # Fixes ZEN-18368: findposkeyerror should detect/fix _lastPollSnmpUpTime
     if isinstance(node, Device):
-        counters['item_count'].increment()
         try:
-            test_reference = node._lastPollSnmpUpTime
-            test_results = test_reference.getStatus()
+            try:
+                counters['item_count'].increment()
+                test_reference = node._lastPollSnmpUpTime
+                test_results = test_reference.getStatus()
+            except POSKeyError as pke:
+                if attempt_fix:
+                    counters['repair_count'].increment()
+                    log.info("Repairing '_lastPollSnmpUpTime' attribute on %s", node)
+                    try:
+                        node._lastPollSnmpUpTime = ZenStatus(0)
+                    finally:
+                        transaction.commit()
+                raise
         except Exception as e:
             counters['error_count'].increment()
-            log.warning("%s: %s on %s '%s' of %s" % (type(e).__name__, e, "property", "_lastPollSnmpUpTime", path_string))
-            if attempt_fix:
-                counters['repair_count'].increment()
-                try:
-                    log.debug("Repairing '_lastPollSnmpUpTime' property on %s" % (node))
-                    node._lastPollSnmpUpTime = ZenStatus(0)
-                except Exception as e:
-                    log.exception(e)
-                transaction.commit()
+            log.warning("%s: %s on %s '%s' of %s", type(e).__name__, e, "attribute", "_lastPollSnmpUpTime", path_string)
 
     names = set(node.objectIds() if hasattr(cls, "objectIds") else [])
     relationships = set(
