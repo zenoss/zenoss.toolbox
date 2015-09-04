@@ -343,10 +343,8 @@ def _getEdges(node, path_string, attempt_fix, counters, log):
                 if attempt_fix:
                     counters['repair_count'].increment()
                     log.info("Repairing '_lastPollSnmpUpTime' attribute on %s", node)
-                    try:
-                        node._lastPollSnmpUpTime = ZenStatus(0)
-                    finally:
-                        transaction.commit()
+                    node._lastPollSnmpUpTime = ZenStatus(0)
+                    transaction.commit()
                 raise
         except Exception as e:
             counters['error_count'].increment()
