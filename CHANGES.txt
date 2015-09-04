@@ -7,6 +7,7 @@ Changelog
  * Fixed ZEN-19454: findposkeyerror counters don't work in log entries
  * Fixed ZEN-18366: findposkeyerror should attempt to fix 'os' and 'hw' PKE issues
  * Fixed ZEN-19456: findposkeyerror needs to output cycle information to log
+ * Fixed ZEN-18368: findposkeyerror should detect/fix _lastPollSnmpUpTime
 
 0.7.0
 --------------------
