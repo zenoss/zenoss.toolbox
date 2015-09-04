@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.7.1"
+scriptVersion = "1.8.0"
 
 import abc
 import argparse
@@ -32,6 +32,8 @@ from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenRelations.RelationshipBase import RelationshipBase
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.ZenUtils.Utils import unused
+from Products.ZenModel.Device import Device
+from Products.ZenModel.ZenStatus import ZenStatus
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
@@ -327,8 +329,27 @@ class HardwareFixer(Fixer):
 _fixits = [RelFixer(), SearchManagerFixer(), ComponentSearchFixer(), OperatingSystemFixer(), HardwareFixer(), ]
 
 
-def _getEdges(node):
+def _getEdges(node, path_string, attempt_fix, counters, log):
     cls = node.aq_base
+
+    # Fixes ZEN-18368: findposkeyerror should detect/fix _lastPollSnmpUpTime
+    if isinstance(node, Device):
+        counters['item_count'].increment()
+        try:
+            test_reference = node._lastPollSnmpUpTime
+            test_results = test_reference.getStatus()
+        except Exception as e:
+            counters['error_count'].increment()
+            log.warning("%s: %s on %s '%s' of %s" % (type(e).__name__, e, "property", "_lastPollSnmpUpTime", path_string))
+            if attempt_fix:
+                counters['repair_count'].increment()
+                try:
+                    log.debug("Repairing '_lastPollSnmpUpTime' property on %s" % (node))
+                    node._lastPollSnmpUpTime = ZenStatus(0)
+                except Exception as e:
+                    log.exception(e)
+                transaction.commit()
+
     names = set(node.objectIds() if hasattr(cls, "objectIds") else [])
     relationships = set(
         node.getRelationshipNames()
@@ -405,7 +426,7 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                              counters['repair_count'].value(), attempt_fix, current_cycle)
 
             try:
-                attributes, relationships = _getEdges(node)
+                attributes, relationships = _getEdges(node, path_string, attempt_fix, counters, log)
             except _RELEVANT_EXCEPTIONS as e:
                 log.warning("%s: %s %s '%s'" %
                             (type(e).__name__, e, "while retreiving children of", path_string))
