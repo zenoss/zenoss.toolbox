@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.TBD
+0.8.0
 --------------------
  * Fixed ZEN-18703: findposkeyerror cycle needs to consider number of repairs
  * Fixed ZEN-19454: findposkeyerror counters don't work in log entries
