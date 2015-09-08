@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.6.4"
+scriptVersion = "1.8.1"
 
 import abc
 import argparse
@@ -32,6 +32,8 @@ from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenRelations.RelationshipBase import RelationshipBase
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.ZenUtils.Utils import unused
+from Products.ZenModel.Device import Device
+from Products.ZenModel.ZenStatus import ZenStatus
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
@@ -84,11 +86,11 @@ def get_lock(process_name, log):
     lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     try:
         lock_socket.bind('\0' + process_name)
-        log.debug("Acquired '%s' execution lock" % (process_name))
+        log.debug("Acquired '%s' execution lock", process_name)
     except socket.error:
         print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
               (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
-        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
+        log.error("'%s' lock already exists - unable to acquire - exiting", process_name)
         log.info("############################################################")
         return False
     return True
@@ -112,6 +114,10 @@ class Counter(object):
     def value(self):
         with self.lock:
             return self.val.value
+
+    def reset(self):
+        with self.lock:
+            self.val.value = 0
 
 
 def progress_bar(items, errors, repairs, fix_value, cycle):
@@ -146,19 +152,20 @@ class RelFixer(Fixer):
                 return None
             badobj = getattr(relationship, "_objects", None)
             if badobj is None:
-                log.warning("Cannot fix relationship - no _objects attribute")
+                log.error("Cannot fix relationship - no _objects attribute")
                 return None
             exOID = getOID(ex)
             relOID = getPOID(relationship._objects)
             if exOID == relOID:
                 return lambda: self._fix(exOID, relOID, relationship, parent, dmd, log)
             else:
-                log.warning("Cannot fix this relationship - exOID %s != relOID %s" % (exOID, relOID))
+                log.error("Cannot fix this relationship - exOID %s != relOID %s", exOID, relOID)
         except:
             return None
 
     def _fix(self, exOID, relOID, relationship, parent, dmd, log):
         """ Attempt to fix the POSKeyError """
+        log.info("Repairing '_objects' attribute on %s", parent)
         cls = relationship._objects.__class__
         relationship._objects = cls()
         parent._p_changed = True
@@ -196,6 +203,7 @@ class SearchManagerFixer(Fixer):
     def _fix(self, exOID, parent, dmd, log):
         """ Delete only; a new one will be created when a SearchProvider is requested.  """
         try:
+            log.info("Repairing 'SearchManager' attribute on %s", parent)
             parent._delOb('SearchManager')
         except Exception as e:
             log.exception(e)
@@ -211,8 +219,7 @@ class SearchManagerFixer(Fixer):
 class ComponentSearchFixer(Fixer):
     """
     ComponentSearchFixer fixes ComponentSearch POSKeyErrors like:
-        POSKeyError: 0x070039e0 on attribute 'componentSearch' of
-          app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
+        POSKeyError: 0x070039e0 on attribute 'componentSearch' of app.zport.dmd.Devices.Network.Juniper.mx.mx_240.devices.edge1.fra
     """
 
     def fixable(self, ex, objId, parentPath, dmd, log):
@@ -232,6 +239,7 @@ class ComponentSearchFixer(Fixer):
     def _fix(self, exOID, parent, dmd, log):
         """ Attempt to remove and recreate the componentSearch() """
         try:
+            log.info("Repairing 'componentSearch' attribute on %s", parent)
             parent._delOb('componentSearch')
         except Exception as e:
             log.exception(e)
@@ -244,11 +252,110 @@ class ComponentSearchFixer(Fixer):
         transaction.commit()
 
 
-_fixits = [RelFixer(), SearchManagerFixer(), ComponentSearchFixer(), ]
+class OperatingSystemFixer(Fixer):
+    """
+    OperatingSystemFixer fixes 'os' POSKeyErrors like:
+        POSKeyError: 0x9782ff on attribute 'os' of /zport/dmd/Devices/Web/SSL/devices/YOUR_DEVICE_HERE
+    """
+
+    def fixable(self, ex, objId, parentPath, dmd, log):
+        """ Return True if this object can fix the exception.  """
+
+        if objId != 'os':
+            return None
+
+        parent = dmd.getObjByPath(parentPath)
+        obj = parent._getOb(objId)
+        exOID = getOID(ex)
+        relOID = getPOID(obj)
+        if exOID == relOID:
+            return lambda: self._fix(exOID, parent, dmd, log)
+
+        return None
+
+    def _fix(self, exOID, parent, dmd, log):
+        """ Attempt to remove and recreate the os object """
+        from Products.ZenModel.OperatingSystem import OperatingSystem
+        try:
+            log.info("Repairing 'os' attribute on %s - please remodel after script completes", parent)
+            parent._delOb('os')
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+        try:
+            temp_os_comp = OperatingSystem()
+            parent._setObject(temp_os_comp.id, temp_os_comp)
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
 
 
-def _getEdges(node):
+class HardwareFixer(Fixer):
+    """
+    HardwareFixer fixes 'hw' POSKeyErrors like:
+        POSKeyError: 0x9782fb on attribute 'hw' of /zport/dmd/Devices/Web/SSL/devices/YOUR_DEVICE_HERE
+    """
+
+    def fixable(self, ex, objId, parentPath, dmd, log):
+        """ Return True if this object can fix the exception.  """
+
+        if objId != 'hw':
+            return None
+
+        parent = dmd.getObjByPath(parentPath)
+        obj = parent._getOb(objId)
+        exOID = getOID(ex)
+        relOID = getPOID(obj)
+        if exOID == relOID:
+            return lambda: self._fix(exOID, parent, dmd, log)
+
+        return None
+
+    def _fix(self, exOID, parent, dmd, log):
+        """ Attempt to remove and recreate the hw object """
+        from Products.ZenModel.DeviceHW import DeviceHW
+        try:
+            log.info("Repairing 'hw' attribute on %s - please remodel after script completes", parent)
+            parent._delOb('hw')
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+        try:
+            temp_hw_comp = DeviceHW()
+            parent._setObject(temp_hw_comp.id, temp_hw_comp)
+        except Exception as e:
+            log.exception(e)
+        transaction.commit()
+
+_fixits = [RelFixer(), SearchManagerFixer(), ComponentSearchFixer(), OperatingSystemFixer(), HardwareFixer(), ]
+
+
+def _getEdges(node, path_string, attempt_fix, counters, log):
     cls = node.aq_base
+    attempted_fix = False
+
+    # Fixes ZEN-18368: findposkeyerror should detect/fix _lastPollSnmpUpTime
+    if isinstance(node, Device):
+        try:
+            try:
+                counters['item_count'].increment()
+                test_reference = node._lastPollSnmpUpTime
+                test_results = test_reference.getStatus()
+            except POSKeyError as pke:
+                if attempt_fix:
+                    counters['repair_count'].increment()
+                    attempted_fix = True
+                    node._lastPollSnmpUpTime = ZenStatus(0)
+                    transaction.commit()
+                raise
+        except Exception as e:
+            counters['error_count'].increment()
+            log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "attribute", "_lastPollSnmpUpTime", path_string)
+        if attempted_fix:
+            log.info("Repairing '_lastPollSnmpUpTime' attribute on %s", node)
+
     names = set(node.objectIds() if hasattr(cls, "objectIds") else [])
     relationships = set(
         node.getRelationshipNames()
@@ -277,7 +384,6 @@ def fixPOSKeyError(exname, ex, objType, objId, parentPath, dmd, log, counters):
     for fixer in _fixits:
         fix = fixer.fixable(ex, objId, parentPath, dmd, log)
         if fix:
-            log.info("Attempting to repair %s issue on %s" % (ex, objId))
             counters['repair_count'].increment()
             fix()
             break
@@ -301,17 +407,17 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
     if not attempt_fix:
         max_cycles = 1
     number_of_issues = -1
+    number_of_repairs = -1
 
-    while ((current_cycle < max_cycles) and (number_of_issues != 0)):
+    while ((current_cycle < max_cycles) and (number_of_issues != 0) and (number_of_repairs != 0)):
         # Objects that will have their children traversed are stored in 'nodes'
         print
         current_cycle += 1
+        log.info("## Beginning cycle %s of %s (potential)", current_cycle, max_cycles)
         nodes = [topnode]
-        counters = {
-            'item_count': Counter(0),
-            'error_count': Counter(0),
-            'repair_count': Counter(0)
-            }
+        counters['item_count'].reset()
+        counters['error_count'].reset()
+        counters['repair_count'].reset()
         while nodes:
             node = nodes.pop(0)
             counters['item_count'].increment()
@@ -325,10 +431,9 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                              counters['repair_count'].value(), attempt_fix, current_cycle)
 
             try:
-                attributes, relationships = _getEdges(node)
+                attributes, relationships = _getEdges(node, path_string, attempt_fix, counters, log)
             except _RELEVANT_EXCEPTIONS as e:
-                log.warning("%s: %s %s '%s'" %
-                            (type(e).__name__, e, "while retreiving children of", path_string))
+                log.critical("%s: %s %s '%s'", type(e).__name__, e, "while retreiving children of", path_string)
                 counters['error_count'].increment()
                 if attempt_fix:
                     if isinstance(e, POSKeyError):
@@ -356,19 +461,16 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                     #   https://dev.zenoss.com/tracint/pastebin/4769
                     # ./findposkeyerror --fixrels /zport/dmd/
                     #   SystemError: new style getargs format but argument is not a tuple
-                    log.warning("%s: %s on %s '%s' of %s" %
-                                (type(e).__name__, e, "relationship", name, path_string))
+                    log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "relationship", name, path_string)
                     raise  # Not sure why we are raising this vs. logging and continuing
                 except _RELEVANT_EXCEPTIONS as e:
                     counters['error_count'].increment()
-                    log.warning("%s: %s on %s '%s' of %s" %
-                                (type(e).__name__, e, "relationship", name, path_string))
+                    log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "relationship", name, path_string)
                     if attempt_fix:
                         if isinstance(e, POSKeyError):
                             fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
                 except Exception as e:
-                    log.warning("%s: %s on %s '%s' of %s" %
-                                (type(e).__name__, e, "relationship", name, path_string))
+                    log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "relationship", name, path_string)
 
             for name in attributes:
                 try:
@@ -382,14 +484,12 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                     childnode.getId()
                 except _RELEVANT_EXCEPTIONS as e:
                     counters['error_count'].increment()
-                    log.warning("%s: %s on %s '%s' of %s" %
-                                (type(e).__name__, e, "attribute", name, path_string))
+                    log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "attribute", name, path_string)
                     if attempt_fix:
                         if isinstance(e, POSKeyError):
                             fixPOSKeyError(type(e).__name__, e, "attribute", name, path, dmd, log, counters)
                 except Exception as e:
-                    log.warning("%s: %s on %s '%s' of %s" %
-                                (type(e).__name__, e, "relationship", name, path_string))
+                    log.critical("%s: %s on %s '%s' of %s", type(e).__name__, e, "relationship", name, path_string)
                 else:
                     # No exception, so it should be safe to add this child node as a traversable object.
                     nodes.append(childnode)
@@ -400,6 +500,9 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
         progress_bar(counters['item_count'].value(), counters['error_count'].value(),
                      counters['repair_count'].value(), attempt_fix, current_cycle)
         number_of_issues = counters['error_count'].value()
+        number_of_repairs = counters['repair_count'].value()
+        log.info("findposkeyerror cycle %s: examined %d objects, encountered %d errors, and attempted %d repairs",
+                  current_cycle, counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
 
 
 def parse_options():
@@ -431,7 +534,7 @@ def main():
     execution_start = time.time()
     cli_options = parse_options()
     log = configure_logging('findposkeyerror')
-    log.info("Command line options: %s" % (cli_options))
+    log.info("Command line options: %s", cli_options)
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
         
@@ -461,16 +564,14 @@ def main():
     else:
         print("[%s] Examining items under the '%s' path (%s):" %
               (strftime("%Y-%m-%d %H:%M:%S", localtime()), cli_options['path'], folder))
-        log.info("Examining items under the '%s' path (%s)" % (cli_options['path'], folder))
+        log.info("Examining items under the '%s' path (%s)", cli_options['path'], folder)
         findPOSKeyErrors(folder, cli_options['fix'], cli_options['unlimitedram'], dmd, log, counters, cli_options['cycles'])
         print
 
     print("\n[%s] Execution finished in %s\n" %
           (strftime("%Y-%m-%d %H:%M:%S", localtime()),
            datetime.timedelta(seconds=int(time.time() - execution_start))))
-    log.info("findposkeyerror examined %d objects, encountered %d errors, and attempted %d repairs", 
-             counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
-    log.info("findposkeyerror completed in %1.2f seconds" % (time.time() - execution_start))
+    log.info("findposkeyerror completed in %1.2f seconds", time.time() - execution_start)
     log.info("############################################################")
 
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
