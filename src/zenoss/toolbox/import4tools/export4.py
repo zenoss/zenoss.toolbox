@@ -59,7 +59,7 @@ class GL:
         # determine the absolute path to target_dir
         # if scsi is given, we use /mnt/export4/4x-backup
         if cls.args.scsi:
-            cls.target_vol = os.path.join('mnt', 'export4')
+            cls.target_vol = os.path.join(os.path.sep, 'mnt', 'export4')
             cls.target_dir = os.path.join(cls.target_vol, '4x-backup')
             cls.target_file = '4x-export-%s.tar' % cls.thetime
         # if filename is given, we use the absolute path to the filename
@@ -77,12 +77,11 @@ class GL:
         cls.target_path = os.path.join(cls.target_dir, cls.target_file)
 
         # honor the temp dir specified
-        if not cls.args.temp_dir:
-            tdir = cls.args.temp_dir
+        if cls.args.temp_dir:
+            cls.tmp_dir = cls.args.temp_dir
         else:
-            tdir = cls.target_dir
+            cls.tmp_dir = cls.target_dir
 
-        cls.tmp_dir = tempfile.mkdtemp(dir=tdir)
         cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
         cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
         cls.md5_filename =          os.path.join(cls.tmp_dir, 'backup.md5')
@@ -155,7 +154,7 @@ def backup_master(backup_dir):
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
     if GL.args.temp_dir:
-        zbcommand.append('--temp-dir=%s' % GL.args.temp_dir)
+        zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
     if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
     if GL.args.no_eventsdb:
@@ -246,7 +245,8 @@ def cleanup(error=False):
             try:
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
-                    subprocess.check_call("su -c 'use_scsi -u %s:%s %s'" % (GL.scsi_host, GL.scsi_id, GL.target_vol))
+                    print "Please enter root password when prompted ->"
+                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s %s" % (GL.args.scsi, GL.target_vol)])
             except:
                 pass
         if GL.target_path and error:
@@ -380,14 +380,17 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        subprocess.check_call("su -c 'use_scsi -m %s %s'" % (GL.scsi, GL.target_vol))
+        print "Please enter root password when prompted ->"
+        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s %s" % (GL.args.scsi, GL.target_vol)])
 
     except:
         print 'Failed to prepare %s as the export4 disk!' % GL.args.scsi
         sys.exit(1)
 
-    subprocess.check_call('mkdir -p %s', GL.target_dir)
-    subprocess.check_call('chmod -v 777 %s', GL.target_dir)
+    subprocess.check_call(['/bin/mkdir', '-p', GL.target_dir])
+    subprocess.check_call(['/bin/chmod', '-v', '777', GL.target_dir])
+    print "Export space prepared..."
+
     return
 
 
@@ -437,6 +440,9 @@ def main():
 
         # exit if target preparation failed
         prep_target()
+
+        # now create the tmp dir
+        GL.tmp_dir = tempfile.mkdtemp(dir=GL.tmp_dir)
 
         if not os.path.isdir(GL.backup_dir):
             os.makedirs(GL.backup_dir)
