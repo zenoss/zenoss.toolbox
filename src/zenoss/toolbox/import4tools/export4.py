@@ -143,11 +143,13 @@ def backup_remote_collectors(backup_dir):
         remotezbresult = subprocess.call(remotebackupcmd)
         if remotezbresult is not 0:
             print 'backup failed on remote collector %s, aborting ...' % collector
+            cleanup(False)
             sys.exit(remotezbresult)
         scpcmd = ['scp', 'zenoss@%s:%s' % (hostname, remote_backup_fn), GL.tmp_dir]
         scpresult = subprocess.call(scpcmd)
         if scpresult is not 0:
             print 'failed to scp backup %s from remote collector %s, aborting ...' % (remote_backup_filename, collector)
+            cleanup(False)
             sys.exit(scpresult)
         remote_backups.append(remote_backup_filename)
     return remote_backups
@@ -180,6 +182,7 @@ def backup_master(backup_dir):
             print 'no backup specified and making one failed, aborting ...'
             raise Exception
     except:
+        cleanup(False)
         sys.exit(1)
     finally:
         subprocess.call(['zenoss', 'start'])
@@ -215,6 +218,7 @@ def genmd5(master_backup_path):
     _rc = subprocess.call(_cmd, shell=True)
     if _rc != 0:
         print 'Generating md5 failed'
+        cleanup(False)
         sys.exit(_rc)
 
 
@@ -224,6 +228,7 @@ def add_to_tar(tar_name, path_name):
     _tcmd_rc = subprocess.call(_tcmd, shell=True)
     if _tcmd_rc is not 0:
         print 'Adding %s to %s failed!' % (path_name, tar_name)
+        cleanup(False)
         sys.exit(_tcmd_rc)
 
 
@@ -348,7 +353,8 @@ def dryRun():
     backupSize *= 2.0
     GL.backupSize = backupSize/1000
 
-    print 'Total estimated free space needed for export is up to %d GB' % GL.backupSize
+    # adding 10% buffer
+    print 'Total estimated free space needed for export is up to %d GB' % (GL.backupSize * 1.1 + 1)
 
 
 def freeSpaceG(fname):
@@ -364,6 +370,7 @@ def checkSpace():
     avail = freeSpaceG(GL.tmp_dir)
     if avail < GL.backupSize:
         print "Insufficient temp space in %s: %d GB, %d GB is needed." % (GL.tmp_dir, avail, GL.backupSize)
+        cleanup(False)
         sys.exit(1)
     else:
         print "Available temporary space of %s: %d GB." % (GL.tmp_dir, avail)
@@ -373,6 +380,7 @@ def checkSpace():
     dname = os.path.dirname(GL.target_dir)
     if avail < GL.backupSize:
         print "Insufficient backup space in %s: %d GB, %d GB is needed." % (dname, avail, GL.backupSize)
+        cleanup(False)
         sys.exit(1)
     else:
         print "Available backup space of %s: %d GB." % (dname, avail)
@@ -419,6 +427,8 @@ def prep_target():
             print 'Cannot access SCSI node (%s)! please check host/id ...' % GL.args.scsi
         else:
             print 'Cannot open %s! please check accessibility ...' % GL.target_path
+
+        cleanup(False)
         sys.exit(1)
 
     return
