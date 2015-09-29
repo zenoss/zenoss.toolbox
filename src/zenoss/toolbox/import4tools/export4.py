@@ -264,7 +264,7 @@ def dryRun():
     """
     Report back the estimated disk space needed for the backup.  Zenoss can be running for this.
     """
-    backupSize = 0      # estimated size of backup in MB
+    backupSize = 0      # estimated size of backup in MB (GL.backupsize is in GB)
     # skip remote collectors (TODO)
     backupSize += 5     # md5, dmd_uuid, flexera, componentList
     backupSize += 10    # bin, etc, backup.settings
@@ -272,15 +272,15 @@ def dryRun():
     # Global Catalog (if it exists)
     if os.path.exists('/opt/zenoss/var/zencatalogservice'):
         catalogDataSize = subprocess.check_output("du -sc /opt/zenoss/var/zencatalogservice | awk 'END{print $1;}'", shell=True)
-        catalogDataSize = int(int(catalogDataSize.strip()) / 1000000) + 1
+        catalogDataSize = int(int(catalogDataSize.strip()) / 1000) + 1
         backupSize += catalogDataSize
-        print 'Local catalog data estimated to need %d GB' % catalogDataSize
+        print 'Local catalog data estimated to need %d MB' % catalogDataSize
 
     # ZenPacks
     zenpackDataSize = subprocess.check_output("du -sc /opt/zenoss/ZenPacks | awk 'END{print $1;}'", shell=True)
-    zenpackDataSize = int(int(zenpackDataSize.strip()) / 1000000) + 1
+    zenpackDataSize = int(int(zenpackDataSize.strip()) / 1000) + 1
     backupSize += zenpackDataSize
-    print 'Local zenpack data estimated to need %d GB' % zenpackDataSize
+    print 'Local zenpack data estimated to need %d MB' % zenpackDataSize
 
     # DB estimate (does not include routines, but it's very fast).  Grabs table
     # sizes from information_schema for the given DB
@@ -319,36 +319,36 @@ def dryRun():
     # ZEP db
     zepDBSize = int(getDBSize('zep') * .05) + 1
     backupSize += zepDBSize
-    print 'Estimated zeneventserver database dump size is %d GB' % zepDBSize
+    print 'Estimated zeneventserver database dump srze is %d MB' % zepDBSize
 
     # ZODB db
     zodbDBSize = int(getDBSize('zodb') * .1) + 1
     backupSize += zodbDBSize
-    print 'Estimated zodb database dump size is %d GB' % zodbDBSize
+    print 'Estimated zodb database dump size is %d MB' % zodbDBSize
 
     # ZODB session db
     zodbSessionDBSize = int(getDBSize('zodb', dbName='zodb_session') * .05) + 1
     backupSize += zodbSessionDBSize
-    print 'Estimated zodb session db dump size is %d GB' % zodbSessionDBSize
+    print 'Estimated zodb session db dump size is %d MB' % zodbSessionDBSize
 
     # ZEP indexes
     zepIndexDataSize = subprocess.check_output("du -sc /opt/zenoss/var/zeneventserver/index | awk 'END{print $1;}'", shell=True)
-    zepIndexDataSize = int(int(zepIndexDataSize.strip()) / 1000000) + 1
+    zepIndexDataSize = int(int(zepIndexDataSize.strip()) / 1000) + 1
     backupSize += zepIndexDataSize
-    print 'Zeneventserver indexes estimated to need %d GB' % zepIndexDataSize
+    print 'Zeneventserver indexes estimated to need %d MB' % zepIndexDataSize
 
     # Local perf data
     perfDataSize = subprocess.check_output("du -sc /opt/zenoss/perf | awk 'END{print $1;}'", shell=True)
-    perfDataSize = int(int(perfDataSize.strip()) / 1000000) + 1
+    perfDataSize = int(int(perfDataSize.strip()) / 1000) + 1
     backupSize += perfDataSize
-    print 'Local performance data estimated to need %d GB' % perfDataSize
+    print 'Local performance data estimated to need %d MB' % perfDataSize
 
     # After staging everything individually, it gets tarred up, so at worst, it
     # needs double
     backupSize *= 2.2
-    GL.backupSize = backupSize
+    GL.backupSize = backupSize/1000
 
-    print 'Total estimated free space needed for export is up to %0d GB' % backupSize
+    print 'Total estimated free space needed for export is up to %0d GB' % GL.backupSize
 
 
 def freeSpaceG(fname):
