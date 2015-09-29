@@ -41,7 +41,7 @@ def scsi_umount(args, scsi_host, scsi_id):
         rc1 = subprocess.call("umount %s" % args.volume, shell=True)
         rc2 = subprocess.call('echo "1" > /sys/class/scsi_host/host%s/device/target%s:0:%s/%s:0:%s:0/delete' %
             (scsi_host, scsi_host, scsi_id, scsi_host, scsi_id), shell=True)
-        if rc1==0 and rc2==0:
+        if rc1 == 0 and rc2 == 0:
             print '%s unmounted OK.' % args.volume
         else:
             print '%s unmount attempted ...' % args.volume
@@ -62,12 +62,14 @@ def scsi_mount(args, scsi_host, scsi_id):
         subprocess.check_call('echo "1" > /sys/class/scsi_host/host%s/device/target%s:0:%s/%s:0:%s:0/delete' %
                              (scsi_host, scsi_host, scsi_id, scsi_host, scsi_id), shell=True)
         time.sleep(1)
-        old_dl = subprocess.check_output("lsblk -o TYPE,KNAME | awk '{if (index(\"disk\", $1)>0) {print $2}}'", shell=True).split('\n')
+        old_dl = subprocess.check_output(
+            "lsblk -o TYPE,KNAME,SIZE | awk '{if (index(\"disk\", $1)>0) {printf \"%s [%s]\\n\", $2, $3}}'", shell=True).split('\n')
 
         # rescan to find the dev ID
         subprocess.check_call('echo "- - -" > /sys/class/scsi_host/host%s/scan' % scsi_host, shell=True)
         time.sleep(1)
-        new_dl = subprocess.check_output("lsblk -o TYPE,KNAME | awk '{if (index(\"disk\", $1)>0) {print $2}}'", shell=True).split('\n')
+        new_dl = subprocess.check_output(
+            "lsblk -o TYPE,KNAME,SIZE | awk '{if (index(\"disk\", $1)>0) {printf \"%s [%s]\\n\", $2, $3}}'", shell=True).split('\n')
 
         # print "New disks list:", new_dl
 
@@ -80,11 +82,12 @@ def scsi_mount(args, scsi_host, scsi_id):
         print "New device identified -> /dev/%s" % newdev
 
         try:
-            raw_input("WARNING: Erasing /dev/%s (%s) !!! <CTRL+C> to quit, <ENTER> to continue ..." % (newdev, args.scsi))
+            raw_input("WARNING: Erasing (%s) /dev/%s !!! <CTRL+C> to quit, <ENTER> to continue ..." % (args.scsi, newdev))
             raw_input("WARNING: Press <ENTER> again to confirm ...")
         except KeyboardInterrupt:
             raise
 
+        newdev = newdev.split()[0]
         print "Preparing disk device /dev/%s ..." % newdev
         # clean all partitions
         subprocess.check_call("dd if=/dev/zero of=/dev/%s bs=512 count=1 conv=notrunc" % newdev, shell=True)
@@ -106,8 +109,9 @@ def scsi_mount(args, scsi_host, scsi_id):
 
         print '%s mounted OK.' % args.volume
 
-    except KeyboardInterrupt as e:
-        print e
+    except KeyboardInterrupt:
+        subprocess.call('echo "1" > /sys/class/scsi_host/host%s/device/target%s:0:%s/%s:0:%s:0/delete' %
+            (scsi_host, scsi_host, scsi_id, scsi_host, scsi_id), shell=True)
         print 'Operation cancelled!'
         raise
 
