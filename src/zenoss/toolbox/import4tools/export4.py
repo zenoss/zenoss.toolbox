@@ -319,7 +319,7 @@ def dryRun():
     # ZEP db
     zepDBSize = int(getDBSize('zep') * .05) + 1
     backupSize += zepDBSize
-    print 'Estimated zeneventserver database dump srze is %d MB' % zepDBSize
+    print 'Estimated zeneventserver database dump size is %d MB' % zepDBSize
 
     # ZODB db
     zodbDBSize = int(getDBSize('zodb') * .1) + 1
@@ -345,10 +345,10 @@ def dryRun():
 
     # After staging everything individually, it gets tarred up, so at worst, it
     # needs double
-    backupSize *= 2.2
+    backupSize *= 2.0
     GL.backupSize = backupSize/1000
 
-    print 'Total estimated free space needed for export is up to %0d GB' % GL.backupSize
+    print 'Total estimated free space needed for export is up to %d GB' % GL.backupSize
 
 
 def freeSpaceG(fname):
