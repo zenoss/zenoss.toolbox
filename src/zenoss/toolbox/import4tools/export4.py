@@ -72,16 +72,20 @@ class GL:
             cls.target_dir = os.path.dirname(os.path.abspath(cls.args.filename))
         # else, we use the current dir
         else:
+            cls.target_file = '4x-export-%s.tar' % cls.thetime
             cls.target_dir = os.path.abspath('.')
 
         cls.target_path = os.path.join(cls.target_dir, cls.target_file)
 
+    @classmethod
+    def init_tmp(cls):
         # honor the temp dir specified
         if cls.args.temp_dir:
-            cls.tmp_dir = cls.args.temp_dir
+            cls.tmp_dir = tempfile.mkdtemp(dir=cls.args.temp_dir)
         else:
-            cls.tmp_dir = cls.target_dir
+            cls.tmp_dir = tempfile.mkdtemp(dir=cls.target_dir)
 
+        # now create the tmp dir
         cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
         cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
         cls.md5_filename =          os.path.join(cls.tmp_dir, 'backup.md5')
@@ -441,8 +445,8 @@ def main():
         # exit if target preparation failed
         prep_target()
 
-        # now create the tmp dir
-        GL.tmp_dir = tempfile.mkdtemp(dir=GL.tmp_dir)
+        # now all target dirs are ready, we generate the tmp_dir and files
+        GL.init_tmp()
 
         if not os.path.isdir(GL.backup_dir):
             os.makedirs(GL.backup_dir)
