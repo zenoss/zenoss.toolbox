@@ -249,7 +249,7 @@ def cleanup(error=False):
             try:
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
-                    print "Please enter root password when prompted ->"
+                    print "Unmounting - please enter root password when prompted ->"
                     subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s %s" % (GL.args.scsi, GL.target_vol)])
             except:
                 pass
@@ -384,7 +384,7 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        print "Please enter root password when prompted ->"
+        print "Preparing disk - please enter root password when prompted ->"
         subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s %s" % (GL.args.scsi, GL.target_vol)])
 
     except:
