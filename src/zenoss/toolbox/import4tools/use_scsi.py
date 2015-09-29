@@ -37,10 +37,14 @@ def parse_arguments():
 
 def scsi_umount(args, scsi_host, scsi_id):
     if args.scsi:
-        subprocess.check_call("umount %s" % args.volume, shell=True)
-        subprocess.check_call('echo "1" > /sys/class/scsi_host/host%s/device/target%s:0:%s/%s:0:%s:0/delete' %
+        # continue execute the statements even if failed
+        rc1 = subprocess.call("umount %s" % args.volume, shell=True)
+        rc2 = subprocess.call('echo "1" > /sys/class/scsi_host/host%s/device/target%s:0:%s/%s:0:%s:0/delete' %
             (scsi_host, scsi_host, scsi_id, scsi_host, scsi_id), shell=True)
-    print '%s unmounted OK.' % args.volume
+        if rc1==0 and rc2==0:
+            print '%s unmounted OK.' % args.volume
+        else:
+            print '%s unmount attempted ...' % args.volume
 
 
 def scsi_mount(args, scsi_host, scsi_id):
