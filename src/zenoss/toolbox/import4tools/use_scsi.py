@@ -14,13 +14,11 @@ import argparse
 import subprocess
 import sys
 import time
-import re
 
 '''
-This script mounts an added scsi (host,id) to a target mount directory
+This script mounts an added scsi (scsi_host,id) on a linux dev tree to a target mount directory
 This script must run as root, the volume is mounted as 777
 '''
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="4.x migration - mount/unmount scsi to/from a target directory")
@@ -34,16 +32,6 @@ def parse_arguments():
     parser.add_argument('scsi', help='SCSI_host:SCSI_id', default='')
     parser.add_argument('volume', help='The target mount directory', default='')
     return parser.parse_args()
-
-
-def get_sda_hostid():
-    # extract the hostid from the existing sda disk
-    _line = subprocess.check_output(['/bin/ls', '-l', '/sys/block/sda'])
-    _m = re.search('.*/host([0-9]+)/.*', _line)
-    if _m:
-        return _m.group(1)
-    else:
-        return ''
 
 
 def scsi_umount(args, scsi_host, scsi_id):
@@ -136,14 +124,7 @@ def scsi_mount(args, scsi_host, scsi_id):
 def main():
     try:
         args = parse_arguments()
-        __scsi_host, scsi_id = args.scsi.split(':')
-
-        # we require the scsi be added in the same host location as sda (disk1)
-        # usually, it is 0
-        scsi_host =  get_sda_hostid()
-
-        if __scsi_host != scsi_host:
-            print "Using /dev/sda scsi location %s: instead of %s:" % (scsi_host, __scsi_host)
+        scsi_host, scsi_id = args.scsi.split(':')
 
         if not scsi_host or not scsi_id:
             raise Exception

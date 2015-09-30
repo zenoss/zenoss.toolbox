@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import shutil
+import re
 
 from validate4import import ValidationRunner
 from validate4import import parse_argz as parseVRunnerArgs
@@ -52,6 +53,7 @@ class GL:
 
     scsi_host = ''
     scsi_id = ''
+    sda_host = '0'
 
     # we initialize the derived variables here
     @classmethod
@@ -94,8 +96,8 @@ class GL:
 def parse_arguments():
     parser = argparse.ArgumentParser(description="4.x export script")
     outputGroup = parser.add_mutually_exclusive_group()
-    outputGroup.add_argument('-f', '--filename', help='specify name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=None)
-    outputGroup.add_argument('-s', '--scsi', help='specify name of a blank/unmounted backup SCSI node.', default=None)
+    outputGroup.add_argument('-f', '--filename', help='the name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=None)
+    outputGroup.add_argument('-s', '--scsi', help='the linux device id of a device on the same scsi_host as /dev/sda.', default=None)
     outputGroup.add_argument('--dry-run', help='perform a dry run of the backup, and report the estimated required disk space for the backup', action='store_true')
     parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
     parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
@@ -255,7 +257,7 @@ def cleanup(error=False):
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
                     print "Unmounting - enter root password when prompted ->"
-                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s %s" % (GL.args.scsi, GL.target_vol)])
+                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
             except:
                 pass
         if GL.target_path and error:
@@ -386,14 +388,28 @@ def checkSpace():
         print "Available backup space of %s: %d GB." % (dname, avail)
 
 
+def get_sda_hostid():
+    # extract the hostid from the existing sda disk
+    _line = subprocess.check_output(['/bin/ls', '-l', '/sys/block/sda'])
+    _m = re.search('.*/host([0-9]+)/.*', _line)
+    if _m:
+        return _m.group(1)
+    else:
+        return ''
+
+
 def prep_scsi():
     # partition, format, and mount the directory
     # if failed, exit
 
     # mount the provided scsi disk
     try:
+        GL.sda_host = get_sda_hostid()
+        if not GL.sda_host:
+            raise
+
         print "Preparing disk - enter root password when prompted ->"
-        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s %s" % (GL.args.scsi, GL.target_vol)])
+        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
 
     except:
         print 'Failed to prepare %s as the export4 disk!' % GL.args.scsi
