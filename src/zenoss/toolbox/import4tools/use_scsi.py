@@ -14,6 +14,7 @@ import argparse
 import subprocess
 import sys
 import time
+import re
 
 '''
 This script mounts an added scsi (host,id) to a target mount directory
@@ -35,6 +36,16 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def get_sda_hostid():
+    # extract the hostid from the existing sda disk
+    _line = subprocess.check_output(['/bin/ls', '-l', '/sys/block/sda'])
+    _m = re.search('.*/host([0-9]+)/.*', _line)
+    if _m:
+        return _m.group(1)
+    else:
+        return ''
+
+
 def scsi_umount(args, scsi_host, scsi_id):
     if args.scsi:
         # continue execute the statements even if failed
@@ -53,7 +64,7 @@ def scsi_mount(args, scsi_host, scsi_id):
 
     try:
         # rescan to make sure that all unscanned device appears
-        print "Identifying the new SCSI disk at %s ..." % args.scsi
+        print "Identifying the new SCSI disk at %s:%s ..." % (scsi_host, scsi_id)
         subprocess.check_call('echo "- - -" > /sys/class/scsi_host/host%s/scan' % scsi_host, shell=True)
         time.sleep(1)
 
@@ -82,7 +93,7 @@ def scsi_mount(args, scsi_host, scsi_id):
         print "New device identified -> /dev/%s" % newdev
 
         try:
-            raw_input("WARNING: Erasing (%s) /dev/%s !!! <CTRL+C> to quit, <ENTER> to continue ..." % (args.scsi, newdev))
+            raw_input("WARNING: Erasing (target%s:0:%s) /dev/%s !!! <ENTER> to continue, <CTRL+C> to quit ..." % (scsi_host, scsi_id, newdev))
             raw_input("WARNING: Press <ENTER> again to confirm ...")
         except KeyboardInterrupt:
             raise
@@ -96,7 +107,7 @@ def scsi_mount(args, scsi_host, scsi_id):
         subprocess.check_call("echo -e 'n\np\n1\n\n\np\nw\nq\n' | fdisk /dev/%s" % newdev, shell=True)
 
         # make a ext4 file system on the new partition
-        subprocess.check_call("mkfs -t ext4 /dev/%s1" % newdev, shell=True)
+        subprocess.check_call("mkfs -t ext4 -L IMPORT4 /dev/%s1" % newdev, shell=True)
 
         # create the target directory
         subprocess.check_call("mkdir -p %s" % args.volume, shell=True)
@@ -125,7 +136,15 @@ def scsi_mount(args, scsi_host, scsi_id):
 def main():
     try:
         args = parse_arguments()
-        scsi_host, scsi_id = args.scsi.split(':')
+        __scsi_host, scsi_id = args.scsi.split(':')
+
+        # we require the scsi be added in the same host location as sda (disk1)
+        # usually, it is 0
+        scsi_host =  get_sda_hostid()
+
+        if __scsi_host != scsi_host:
+            print "Using /dev/sda scsi location %s: instead of %s:" % (scsi_host, __scsi_host)
+
         if not scsi_host or not scsi_id:
             raise Exception
 
