@@ -16,10 +16,9 @@ import sys
 import time
 
 '''
-This script mounts an added scsi (host,id) to a target mount directory
+This script mounts an added scsi (scsi_host,id) on a linux dev tree to a target mount directory
 This script must run as root, the volume is mounted as 777
 '''
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="4.x migration - mount/unmount scsi to/from a target directory")
@@ -53,7 +52,7 @@ def scsi_mount(args, scsi_host, scsi_id):
 
     try:
         # rescan to make sure that all unscanned device appears
-        print "Identifying the new SCSI disk at %s ..." % args.scsi
+        print "Identifying the new SCSI disk at %s:%s ..." % (scsi_host, scsi_id)
         subprocess.check_call('echo "- - -" > /sys/class/scsi_host/host%s/scan' % scsi_host, shell=True)
         time.sleep(1)
 
@@ -82,7 +81,7 @@ def scsi_mount(args, scsi_host, scsi_id):
         print "New device identified -> /dev/%s" % newdev
 
         try:
-            raw_input("WARNING: Erasing (%s) /dev/%s !!! <CTRL+C> to quit, <ENTER> to continue ..." % (args.scsi, newdev))
+            raw_input("WARNING: Erasing (target%s:0:%s) /dev/%s !!! <ENTER> to continue, <CTRL+C> to quit ..." % (scsi_host, scsi_id, newdev))
             raw_input("WARNING: Press <ENTER> again to confirm ...")
         except KeyboardInterrupt:
             raise
@@ -96,7 +95,7 @@ def scsi_mount(args, scsi_host, scsi_id):
         subprocess.check_call("echo -e 'n\np\n1\n\n\np\nw\nq\n' | fdisk /dev/%s" % newdev, shell=True)
 
         # make a ext4 file system on the new partition
-        subprocess.check_call("mkfs -t ext4 /dev/%s1" % newdev, shell=True)
+        subprocess.check_call("mkfs -t ext4 -L IMPORT4 /dev/%s1" % newdev, shell=True)
 
         # create the target directory
         subprocess.check_call("mkdir -p %s" % args.volume, shell=True)
@@ -126,6 +125,7 @@ def main():
     try:
         args = parse_arguments()
         scsi_host, scsi_id = args.scsi.split(':')
+
         if not scsi_host or not scsi_id:
             raise Exception
 
