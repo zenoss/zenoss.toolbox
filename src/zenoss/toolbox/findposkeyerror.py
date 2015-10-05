@@ -9,7 +9,7 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.8.1"
+scriptVersion = "1.8.2"
 
 import abc
 import argparse
@@ -343,7 +343,8 @@ def _getEdges(node, path_string, attempt_fix, counters, log):
                 counters['item_count'].increment()
                 test_reference = node._lastPollSnmpUpTime
                 test_results = test_reference.getStatus()
-            except POSKeyError as pke:
+            #Fixes ZEN-20252: findposkeyerror won't attempt fix on attributeError for getStatus()
+            except ( POSKeyError, AttributeError ) as fixableException:
                 if attempt_fix:
                     counters['repair_count'].increment()
                     attempted_fix = True
