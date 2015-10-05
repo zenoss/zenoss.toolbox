@@ -344,7 +344,7 @@ def _getEdges(node, path_string, attempt_fix, counters, log):
                 test_reference = node._lastPollSnmpUpTime
                 test_results = test_reference.getStatus()
             #Fixes ZEN-20252: findposkeyerror won't attempt fix on attributeError for getStatus()
-            except ( POSKeyError, AttributeError ) as fixableException:
+            except (POSKeyError, AttributeError) as fixableException:
                 if attempt_fix:
                     counters['repair_count'].increment()
                     attempted_fix = True
