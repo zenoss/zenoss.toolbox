@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.8.1
+--------------------
+ * Fixed ZEN-20252: findposkeyerror won't attempt fix on attributeError for getStatus()
+
 0.8.0
 --------------------
  * Fixed ZEN-18703: findposkeyerror cycle needs to consider number of repairs
