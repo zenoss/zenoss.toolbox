@@ -81,7 +81,7 @@ def scsi_mount(args, scsi_host, scsi_id):
         print "New device identified -> /dev/%s" % newdev
 
         try:
-            raw_input("WARNING: About to prepare (target%s:0:%s) /dev/%s for export. <ENTER> to continue, <CTRL+C> to quit ..." % (scsi_host, scsi_id, newdev))
+            raw_input("WARNING: Ready to prepare (target%s:0:%s) /dev/%s for export. <ENTER> to continue, <CTRL+C> to quit ..." % (scsi_host, scsi_id, newdev))
         except KeyboardInterrupt:
             raise
 
