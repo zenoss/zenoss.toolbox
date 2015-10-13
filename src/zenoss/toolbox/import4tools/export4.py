@@ -358,7 +358,7 @@ def dryRun():
 
     # After staging everything individually, it gets tarred up, so at worst, it
     # needs double
-    backupSize *= 2.0
+    backupSize *= 3.0
     GL.backupSize = backupSize/1000
 
     # adding 10% buffer
