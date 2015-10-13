@@ -87,6 +87,7 @@ class GL:
         else:
             cls.tmp_dir = tempfile.mkdtemp(dir=cls.target_dir)
 
+        cls.backup_dir = os.path.join(cls.tmp_dir, 'backups')
         # now create the tmp dir
         cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
         cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
@@ -94,7 +95,7 @@ class GL:
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="4.x export script")
+    parser = argparse.ArgumentParser(description="4.x export script (ver:%s)" % scriptVersion)
     outputGroup = parser.add_mutually_exclusive_group()
     outputGroup.add_argument('-f', '--filename', help='the name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=None)
     outputGroup.add_argument('-s', '--scsi', help='the linux device id of a device on the same scsi_host as /dev/sda.', default=None)
@@ -141,7 +142,10 @@ def backup_remote_collectors(backup_dir):
         hub, collector, hostname = line.split(',')
         remote_backup_filename = '%s-%s-perf-backup-%s.tgz' % (hub, collector, GL.thetime)
         remote_backup_fn = os.path.join(backup_dir, remote_backup_filename)
-        remotebackupcmd = ['dc-admin', '--hub-pattern', hub, '--collector-pattern', collector, 'exec', '/opt/zenoss/bin/zenbackup', '--file=%s' % remote_backup_fn, '--no-eventsdb', '--no-zodb']
+        remotebackupcmd = ['dc-admin', '--hub-pattern', hub, '--collector-pattern',
+                           collector, 'exec', '/opt/zenoss/bin/zenbackup',
+                           '--file=%s' % remote_backup_fn, '--no-eventsdb', '--no-zodb',
+                           '--temp-dir=%s' % GL.tmp_dir]
         remotezbresult = subprocess.call(remotebackupcmd)
         if remotezbresult is not 0:
             print 'backup failed on remote collector %s, aborting ...' % collector
@@ -161,8 +165,10 @@ def backup_master(backup_dir):
     print 'making new backup ...'
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
-    if GL.args.temp_dir:
-        zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
+
+    zbcommand.append('--file=%s' % os.path.join(GL.backup_dir, '4x-zenbackup.tgz'))
+    zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
+
     if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
     if GL.args.no_eventsdb:
@@ -352,7 +358,7 @@ def dryRun():
 
     # After staging everything individually, it gets tarred up, so at worst, it
     # needs double
-    backupSize *= 2.0
+    backupSize *= 3.0
     GL.backupSize = backupSize/1000
 
     # adding 10% buffer
