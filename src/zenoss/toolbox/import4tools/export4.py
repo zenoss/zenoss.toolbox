@@ -166,7 +166,7 @@ def backup_master(backup_dir):
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
 
-    zbcommand.append('--file=%s' % os.path.join(GL.backup_dir, '4x-zenbackup.tgz'))
+    zbcommand.append('--file=%s' % os.path.join(GL.backup_dir, 'zenbackup_4x.tgz'))
     zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
 
     if GL.args.no_zodb:
