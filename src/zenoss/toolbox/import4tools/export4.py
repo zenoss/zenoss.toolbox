@@ -356,13 +356,14 @@ def dryRun():
     backupSize += perfDataSize
     print 'Local performance data estimated to need %d MB' % perfDataSize
 
-    # After staging everything individually, it gets tarred up, so at worst, it
-    # needs double
-    backupSize *= 3.0
-    GL.backupSize = backupSize/1000
+    # After staging everything individually, it gets tarred up,
+    # counting the tmp area, the zenbackup file and the final file
+    # we needs triple and 10% additional margin
+    backupSize *= 3.3
 
-    # adding 10% buffer
-    print 'Total estimated free space needed for export is up to %d GB' % (GL.backupSize * 1.1 + 1)
+    GL.backupSize = (backupSize/1000) + 1
+
+    print 'Total estimated free space needed for export is up to %d GB' % GL.backupSize
 
 
 def freeSpaceG(fname):
