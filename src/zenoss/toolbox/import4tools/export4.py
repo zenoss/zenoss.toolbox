@@ -434,7 +434,7 @@ def prep_target():
             print '%s is accessible ...' % GL.target_file
     except:
         if GL.args.scsi:
-            print 'Cannot access SCSI drive! please check ...'
+            print 'Cannot access SCSI drive! ...'
         else:
             print 'Cannot open %s! please check accessibility ...' % GL.target_path
 
