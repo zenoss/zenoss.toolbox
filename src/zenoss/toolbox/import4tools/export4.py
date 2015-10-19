@@ -98,7 +98,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="4.x export script (ver:%s)" % scriptVersion)
     outputGroup = parser.add_mutually_exclusive_group()
     outputGroup.add_argument('-f', '--filename', help='the name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=None)
-    outputGroup.add_argument('-s', '--scsi', help='the linux device id of a device on the same scsi_host as /dev/sda.', default=None)
+    outputGroup.add_argument('-s', '--scsi', help='use a virtual disk for export target', action='store_true', default=False)
     outputGroup.add_argument('--dry-run', help='perform a dry run of the backup, and report the estimated required disk space for the backup', action='store_true')
     parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
     parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
@@ -177,9 +177,9 @@ def backup_master(backup_dir):
         zbcommand.append('--no-perfdata')
 
     try:
-        raw_input("All Zenoss services will be stopped to export data for migration.\n"
+        raw_input("\nAll Zenoss services will be stopped to export data for migration.\n"
                 "The services are restarted once the backup completes.\n\n"
-                "Press ENTER to continue or <CTRL+C> to quit\n")
+                "Press ENTER to continue or <CTRL+C> to quit")
     except KeyboardInterrupt:
         raise
 
@@ -263,7 +263,7 @@ def cleanup(error=False):
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
                     print "Unmounting - enter root password when prompted ->"
-                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
+                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s" % GL.target_vol])
             except:
                 pass
         if GL.target_path and error:
@@ -395,31 +395,18 @@ def checkSpace():
         print "Available backup space of %s: %d GB." % (dname, avail)
 
 
-def get_sda_hostid():
-    # extract the hostid from the existing sda disk
-    _line = subprocess.check_output(['/bin/ls', '-l', '/sys/block/sda'])
-    _m = re.search('.*/host([0-9]+)/.*', _line)
-    if _m:
-        return _m.group(1)
-    else:
-        return ''
-
-
 def prep_scsi():
     # partition, format, and mount the directory
     # if failed, exit
 
     # mount the provided scsi disk
     try:
-        GL.sda_host = get_sda_hostid()
-        if not GL.sda_host:
-            raise
-
-        print "Preparing disk - enter root password when prompted ->"
-        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
+        print "\nDo NOT add the export disk to the virtual machine yet ..."
+        print "\nEnter root password when prompted ->"
+        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s" % GL.target_vol])
 
     except:
-        print 'Failed to prepare %s as the export4 disk!' % GL.args.scsi
+        print 'Failed to prepare the export4 disk!'
         sys.exit(1)
 
     subprocess.check_call(['/bin/mkdir', '-p', GL.target_dir])
@@ -447,7 +434,7 @@ def prep_target():
             print '%s is accessible ...' % GL.target_file
     except:
         if GL.args.scsi:
-            print 'Cannot access SCSI node (%s)! please check host/id ...' % GL.args.scsi
+            print 'Cannot access SCSI drive! please check ...'
         else:
             print 'Cannot open %s! please check accessibility ...' % GL.target_path
 
