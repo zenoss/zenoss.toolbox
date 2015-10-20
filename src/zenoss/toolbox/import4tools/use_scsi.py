@@ -109,19 +109,19 @@ def scsi_mount(args):
         newdev = newdev.split()[0]
         # check if the space needs to be checked
         try:
-            # use the GB
+            # use the GiB
             _GiB=1024*1024*1024
             _devSize = int(float(subprocess.check_output("blockdev --getsize64 /dev/%s" % newdev, shell=True).strip())/_GiB)
             if (args.theSize != 0) and (_devSize < args.theSize):
                 raise Exception
         except:
-            print "Expecting %dG ..." % args.theSize
-            print "Device /dev/%s [%dG] is not large enough ..." % (newdev, _devSize)
+            print "Expecting %d GiB ..." % args.theSize
+            print "Device /dev/%s [%d GiB] is not sufficient ..." % (newdev, _devSize)
             raise Exception
 
         try:
             print ""
-            print "WARNING: Ready to prepare /dev/%s [%dG] for export ..." % (newdev, _devSize)
+            print "WARNING: Ready to prepare /dev/%s [%d GiB] for export ..." % (newdev, _devSize)
             raw_input("<ENTER> to continue, <CTRL+C> to quit ...")
         except KeyboardInterrupt:
             raise

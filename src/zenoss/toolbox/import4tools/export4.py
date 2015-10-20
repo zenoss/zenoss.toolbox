@@ -367,7 +367,7 @@ def dryRun():
 
     # adding the ext4 filesystem conservative 3.2~5% overhead for the diskSize
     GL.diskSize = int(GL.backupSize*1.05 + 1)
-    print 'Expected export disk size should be at least: %d GB' % GL.diskSize
+    print 'Expected export disk size should be at least: %d GiB' % GL.diskSize
 
 
 def freeSpaceG(fname):
