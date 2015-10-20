@@ -60,12 +60,11 @@ def scsi_umount(args):
     try:
         print ""
         print "Safe to remove the export disk from the virtual machine ..."
-        raw_input("<ENTER> after removed, <CTRL+C> to skip the removal ...")
-
-        # delete the device if removed
+        raw_input("<ENTER> after removed ...")
+        # recan and delete the device if removed
         rescan_devices()
     except KeyboardInterrupt:
-        print "User skipped the removal of the export drive."
+        print "<Ctrl-C> User skipped the rescan of the export drive."
 
 
 def scsi_mount(args):
