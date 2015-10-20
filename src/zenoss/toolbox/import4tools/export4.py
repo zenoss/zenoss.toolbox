@@ -403,7 +403,7 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        print "\nDo NOT add the export disk to the virtual machine yet ..."
+        print "\nVerify that the export disk is not added to the virtual machine ..."
         print "\nEnter root password when prompted ->"
         subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -s %s -m %s" % (GL.diskSize, GL.target_vol)])
 
