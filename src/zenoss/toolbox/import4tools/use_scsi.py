@@ -23,6 +23,8 @@ This script must run as root, the volume is mounted as 777
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="4.x migration - mount/unmount scsi to/from a target directory")
+    parser.add_argument('-s', '--size', type=int, dest='theSize', default=0,
+                        help='check if the device has at least the given size')
     outputGroup = parser.add_mutually_exclusive_group()
     outputGroup.add_argument('-m', '--mount',
         dest='doMount',
@@ -75,7 +77,7 @@ def scsi_mount(args):
         scan_hosts()
         rescan_devices()
         old_dl = subprocess.check_output(
-            "lsblk -o TYPE,KNAME,SIZE | awk '{if (index(\"disk\", $1)>0) {printf \"%s [%s]\\n\", $2, $3}}'", shell=True).split('\n')
+            "lsblk -o TYPE,KNAME | awk '{if (index(\"disk\", $1)>0) {printf \"%s\\n\", $2}}'", shell=True).split('\n')
         try:
             print ""
             print "Add the export disk to the virtual machine now."
@@ -88,7 +90,7 @@ def scsi_mount(args):
         scan_hosts()
         rescan_devices()
         new_dl = subprocess.check_output(
-            "lsblk -o TYPE,KNAME,SIZE | awk '{if (index(\"disk\", $1)>0) {printf \"%s [%s]\\n\", $2, $3}}'", shell=True).split('\n')
+            "lsblk -o TYPE,KNAME | awk '{if (index(\"disk\", $1)>0) {printf \"%s\\n\", $2}}'", shell=True).split('\n')
 
         # print "New disks list:", new_dl
 
@@ -104,9 +106,22 @@ def scsi_mount(args):
 
         print "New device identified -> /dev/%s" % newdev
 
+        newdev = newdev.split()[0]
+        # check if the space needs to be checked
+        try:
+            # use the GiB
+            _GiB=1024*1024*1024
+            _devSize = int(float(subprocess.check_output("blockdev --getsize64 /dev/%s" % newdev, shell=True).strip())/_GiB)
+            if (args.theSize != 0) and (_devSize < args.theSize):
+                raise Exception
+        except:
+            print "Expecting %d GiB ..." % args.theSize
+            print "Device /dev/%s [%d GiB] is not sufficient ..." % (newdev, _devSize)
+            raise Exception
+
         try:
             print ""
-            print "WARNING: Ready to prepare /dev/%s for export ..." % newdev
+            print "WARNING: Ready to prepare /dev/%s [%d GiB] for export ..." % (newdev, _devSize)
             raw_input("<ENTER> to continue, <CTRL+C> to quit ...")
         except KeyboardInterrupt:
             raise

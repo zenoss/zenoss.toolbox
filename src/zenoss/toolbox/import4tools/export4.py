@@ -18,7 +18,6 @@ import subprocess
 import sys
 import tempfile
 import shutil
-import re
 
 from validate4import import ValidationRunner
 from validate4import import parse_argz as parseVRunnerArgs
@@ -44,6 +43,7 @@ class GL:
     dmd = 0
     args = 0
     backupSize = 0
+    diskSize = 0
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
     target_vol = None   # used only by scsi mount target dir
@@ -359,11 +359,15 @@ def dryRun():
     # After staging everything individually, it gets tarred up,
     # counting the tmp area, the zenbackup file and the final file
     # we needs triple and 10% additional margin
-    backupSize *= 3.3
+    backupSize *= 3.0
 
-    GL.backupSize = (backupSize/1000) + 1
+    GL.backupSize = int(backupSize/1000) + 1
 
     print 'Total estimated free space needed for export is up to %d GB' % GL.backupSize
+
+    # adding the ext4 filesystem conservative 3.2~5% overhead for the diskSize
+    GL.diskSize = int(GL.backupSize*1.05 + 1)
+    print 'Expected export disk size should be at least: %d GiB' % GL.diskSize
 
 
 def freeSpaceG(fname):
@@ -373,12 +377,10 @@ def freeSpaceG(fname):
 
 
 def checkSpace():
-    dryRun()
-
     # check tmp dir
     avail = freeSpaceG(GL.tmp_dir)
     if avail < GL.backupSize:
-        print "Insufficient temp space in %s: %d GB, %d GB is needed." % (GL.tmp_dir, avail, GL.backupSize)
+        print "Insufficient temp space of %s: %d GB, %d GB is needed." % (GL.tmp_dir, avail, GL.backupSize)
         cleanup(False)
         sys.exit(1)
     else:
@@ -388,7 +390,7 @@ def checkSpace():
     avail = freeSpaceG(GL.target_path)
     dname = os.path.dirname(GL.target_dir)
     if avail < GL.backupSize:
-        print "Insufficient backup space in %s: %d GB, %d GB is needed." % (dname, avail, GL.backupSize)
+        print "Insufficient backup space of %s: %d GB, %d GB is needed." % (dname, avail, GL.backupSize)
         cleanup(False)
         sys.exit(1)
     else:
@@ -403,7 +405,7 @@ def prep_scsi():
     try:
         print "\nDo NOT add the export disk to the virtual machine yet ..."
         print "\nEnter root password when prompted ->"
-        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s" % GL.target_vol])
+        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -s %s -m %s" % (GL.diskSize, GL.target_vol)])
 
     except:
         print 'Failed to prepare the export4 disk!'
@@ -451,9 +453,11 @@ def main():
         # based on args, we initialize globally used variables
         GL.init()
 
+        # always do a dryRun
+        print 'Calculating free space needed for backup'
+        dryRun()
+
         if GL.args.dry_run:
-            print 'Calculating free space needed for backup'
-            dryRun()
             sys.exit()
 
         print 'Running validations'
