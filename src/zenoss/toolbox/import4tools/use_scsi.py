@@ -59,12 +59,12 @@ def scsi_umount(args):
 
     try:
         print ""
-        print "Safe to remove the export disk from the virtual machine ..."
+        print "Please remove the export disk from the virtual machine ..."
         raw_input("<ENTER> after removed ...")
         # recan and delete the device if removed
         rescan_devices()
     except KeyboardInterrupt:
-        print "<Ctrl-C> User skipped the rescan of the export drive."
+        print "User skipped the rescan of the export drive!"
 
 
 def scsi_mount(args):
@@ -79,10 +79,10 @@ def scsi_mount(args):
             "lsblk -o TYPE,KNAME | awk '{if (index(\"disk\", $1)>0) {printf \"%s\\n\", $2}}'", shell=True).split('\n')
         try:
             print ""
-            print "Add the export disk to the virtual machine now."
+            print "Add the export disk to the virtual machine now ..."
             raw_input("<ENTER> when added, <CTRL+C> to quit ...")
         except KeyboardInterrupt:
-            print "User quit the adding export disk process ..."
+            print "User quit the adding export disk process!"
             raise Exception
 
         # rescan to find the new dev ID
@@ -95,15 +95,15 @@ def scsi_mount(args):
 
         delta_dl = list(set(new_dl) - set(old_dl))
         if len(delta_dl) > 1:
-            print "More than one device added ..."
+            print "More than one device added!"
             raise Exception
         elif len(delta_dl) == 0:
-            print "No new device found ..."
+            print "No new device found!"
             raise Exception
         else:
             newdev = delta_dl[0]
 
-        print "New device identified -> /dev/%s" % newdev
+        print "New device identified -> /dev/%s ..." % newdev
 
         newdev = newdev.split()[0]
         # check if the space needs to be checked
@@ -115,7 +115,7 @@ def scsi_mount(args):
                 raise Exception
         except:
             print "Expecting %d GiB ..." % args.theSize
-            print "Device /dev/%s [%d GiB] is not sufficient ..." % (newdev, _devSize)
+            print "Device /dev/%s [%d GiB] is not sufficient!" % (newdev, _devSize)
             raise Exception
 
         try:
