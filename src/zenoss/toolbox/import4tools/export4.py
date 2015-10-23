@@ -215,12 +215,10 @@ def export_map_list():
     with open(GL.map_filename, 'w') as fp:
         for dev in GL.dmd.Devices.getSubDevices():
             fp.write('%s' % get_map(dev))
-            for comp in dev.getMonitoredComponents():
-            	devcount += 1
-                fp.write('%s' % get_map(comp))
             devcount += 1
-            if devcount % 100 is 0:
-                print 'exported 100 maps'
+            for comp in dev.getMonitoredComponents():
+                fp.write('%s' % get_map(comp))
+                devcount += 1
     print 'a total of %d map exported' % devcount
     print 'map exported'
 
@@ -432,7 +430,7 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        print "\nDo NOT add the export disk to the virtual machine yet ..."
+        print "\nVerify that the export disk is not added to the virtual machine ..."
         print "\nEnter root password when prompted ->"
         subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -s %s -m %s" % (GL.diskSize, GL.target_vol)])
 
