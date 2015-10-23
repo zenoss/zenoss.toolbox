@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import shutil
+import atexit
 
 from validate4import import ValidationRunner
 from validate4import import parse_argz as parseVRunnerArgs
@@ -38,6 +39,7 @@ class GL:
 
     dmd_uuid_filename =     'dmd_uuid.txt'
     components_filename =   'componentList.txt'
+    map_filename =          'rrdpath.map'
     md5_filename =          'backup.md5'
 
     dmd = 0
@@ -91,6 +93,7 @@ class GL:
         # now create the tmp dir
         cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
         cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
+        cls.map_filename =          os.path.join(cls.tmp_dir, 'rrdpath.map')
         cls.md5_filename =          os.path.join(cls.tmp_dir, 'backup.md5')
 
 
@@ -200,6 +203,28 @@ def backup_master(backup_dir):
     return backup_path
 
 
+def get_map(c):
+    _pPath = c.getPrimaryPath()
+    _map = "%s|%s\n" % (c.rrdPath(), '/'.join(_pPath))
+    return _map
+
+
+def export_map_list():
+    print 'exporting rrdpath map ...'
+    devcount = 0
+    with open(GL.map_filename, 'w') as fp:
+        for dev in GL.dmd.Devices.getSubDevices():
+            fp.write('%s' % get_map(dev))
+            for comp in dev.getMonitoredComponents():
+            	devcount += 1
+                fp.write('%s' % get_map(comp))
+            devcount += 1
+            if devcount % 100 is 0:
+                print 'exported 100 maps'
+    print 'a total of %d map exported' % devcount
+    print 'map exported'
+
+
 def export_component_list():
     print 'exporting component list ...'
     devcount = 0
@@ -242,6 +267,7 @@ def add_to_tar(tar_name, path_name):
 
 def make_export_tar(tar_file, components_filename, remote_backups, master_backup_path, flexera_dir):
     add_to_tar(tar_file, components_filename)
+    add_to_tar(tar_file, GL.map_filename)
     add_to_tar(tar_file, GL.dmd_uuid_filename)
 
     for _one in remote_backups:
@@ -258,17 +284,20 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
 
 def cleanup(error=False):
     if GL.args:
+        # remove the target file
+        if GL.target_path and error:
+            try:
+                os.remove(GL.target_path)
+            except:
+                pass
+
+        # cleanup the temp space
         if not GL.args.debug:
             try:
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
                     print "Unmounting - enter root password when prompted ->"
                     subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s" % GL.target_vol])
-            except:
-                pass
-        if GL.target_path and error:
-            try:
-                os.remove(GL.target_path)
             except:
                 pass
 
@@ -403,7 +432,7 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        print "\nVerify that the export disk is not added to the virtual machine ..."
+        print "\nDo NOT add the export disk to the virtual machine yet ..."
         print "\nEnter root password when prompted ->"
         subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -s %s -m %s" % (GL.diskSize, GL.target_vol)])
 
@@ -446,7 +475,14 @@ def prep_target():
     return
 
 
+def exit_handler():
+    print "Exiting ..."
+    cleanup(False)
+
+
 def main():
+    atexit.register(exit_handler)
+
     try:
         parse_arguments()
 
@@ -499,6 +535,7 @@ def main():
         master_backup = backup_master(GL.backup_dir)
 
         export_component_list()
+        export_map_list()
         export_dmduuid()
         genmd5(master_backup)
         make_export_tar(GL.target_path, GL.components_filename, remote_backups, master_backup, GL.flexera_dir)
