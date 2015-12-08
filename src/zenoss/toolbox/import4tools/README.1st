@@ -1,0 +1,9 @@
+export4.py exports the Zenoss 4.x data into a package which can be later imported and migrated into a Zenoss 5.x application.
+
+The package includes Zenoss data pertaining to model, event, performance, and also information required to migration from a 4.x to 5.x differences.
+
+export4.py first estimates the temporary space required to perform the data export. This is done by scanning the space consumed by those data on the source system. The script also validates the compatibility of the source and the availability of operating space before the actual export operation. 
+
+The export4 script calls zenbackup to obtain a backup tar file which contains the model data, events archive, and RRD performance data. It then collects the pieces of the migration information that do not exist in the backup tar file.
+
+export4 allows the user to place the package on a target directory or on an attached hard disk.
