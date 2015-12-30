@@ -9,15 +9,13 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.3"
+scriptVersion = "1.1.0"
 
 import Globals
 import argparse
 import sys
 import os
 import traceback
-import logging
-import socket
 import time
 import datetime
 import transaction
@@ -25,11 +23,11 @@ import cStringIO
 import tempfile
 import cPickle
 import ZConfig
+import ZenToolboxUtils
 
 from pickle import Unpickler as UnpicklerBase
 from collections import deque
 from time import localtime, strftime
-from multiprocessing import Lock, Value
 from relstorage.zodbpack import schema_xml
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
@@ -42,80 +40,13 @@ from ZODB.DB import DB
 from ZODB.utils import u64
 
 
-def configure_logging(scriptname):
-    '''Configure logging for zenoss.toolbox tool usage'''
-    
-    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
-    if not os.path.exists('/tmp'):
-        print "/tmp doesn't exist - aborting"
-        exit(1)
-    zenhome_path = os.getenv("ZENHOME")
-    if not zenhome_path:
-        print "$ZENHOME undefined - are you running as the zenoss user?"
-        exit(1)
-    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
-    if not os.path.exists(log_file_path):
-        os.makedirs(log_file_path)
-    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
-    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
-
-    # Create full path filename string for logfile, create RotatingFileHandler
-    toolbox_log = logging.getLogger("%s" % (scriptname))
-    toolbox_log.setLevel(logging.INFO)
-    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
-    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
-
-    # Set logging.Formatter for format and datefmt, attach handler
-    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.DEBUG)
-    toolbox_log.addHandler(handler)
-
-    # Print initialization string to console, log status to logfile
-    toolbox_log.info("############################################################")
-    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
-    return toolbox_log
-
-
-def get_lock(process_name, log):
-    '''Global lock function to keep multiple tools from running at once'''
-    global lock_socket
-    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        lock_socket.bind('\0' + process_name)
-        log.debug("Acquired '%s' execution lock" % (process_name))
-    except socket.error:
-        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
-              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
-        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
-        log.info("############################################################")
-        return False
-    return True
+schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
 
 
 def inline_print(message):
     '''Print message on a single line using sys.stdout.write, .flush'''
     sys.stdout.write("\r%s" % (message))
     sys.stdout.flush()
-
-
-class Counter(object):
-    def __init__(self, initval=0):
-        self.val = Value('i', initval)
-        self.lock = Lock()
-
-    def increment(self):
-        with self.lock:
-            self.val.value += 1
-
-    def value(self):
-        with self.lock:
-            return self.val.value
-
-
-schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
 
 
 class Analyzer(UnpicklerBase):
@@ -383,19 +314,24 @@ def main():
     """Scans through ZODB checking objects for dangling references"""
 
     execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
     sys.path.append ("/opt/zenoss/Products/ZenModel")               # From ZEN-12160
 
     cli_options = parse_options()
-    log = configure_logging('zodbscan')
+
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
     # Attempt to get the zenoss.toolbox lock before any actions performed
-    if not get_lock("zenoss.toolbox", log):
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
 
-    number_of_issues = Counter(0)
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
+    number_of_issues = ZenToolboxUtils.Counter(0)
 
     zodb_name = getGlobalConfiguration().get("zodb-db", "zodb")
 
