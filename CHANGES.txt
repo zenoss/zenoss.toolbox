@@ -3,6 +3,7 @@ Changelog
 
 0.9.0dev
 --------------------
+ * Fixed ZEN-21425: zodbscan should use unified common functions
 
 0.8.1
 --------------------
