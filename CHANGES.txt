@@ -9,6 +9,7 @@ Changelog
  * Fixed ZEN-21417: findposkeyerror should use unified common functions
  * Fixed ZEN-31447: zencheckdbstats should use unified common functions
 
+
 0.8.1
 --------------------
  * Fixed ZEN-20252: findposkeyerror won't attempt fix on attributeError for getStatus()
