@@ -14,6 +14,7 @@ scriptVersion = "1.4.0"
 import argparse
 import datetime
 import Globals
+import logging
 import os
 import sys
 import time
