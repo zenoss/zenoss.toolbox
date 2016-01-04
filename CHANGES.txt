@@ -9,6 +9,7 @@ Changelog
  * Fixed ZEN-21417: findposkeyerror should use unified common functions
  * Fixed ZEN-21447: zencheckdbstats should use unified common functions
  * Fixed ZEN-21446: zenindextool should use unified common functions
+ * Fixed ZEN-21445: zennetworkclean should use unified common functions
 
 
 0.8.1

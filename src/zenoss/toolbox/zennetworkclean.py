@@ -9,75 +9,22 @@
 
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.1"
+scriptVersion = "1.1.0"
 
 import argparse
 import datetime
 import Globals
 import logging
 import os
-import socket
 import sys
 import time
 import traceback
 import transaction
 from Acquisition import aq_parent
+import ZenToolboxUtils
 
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from ZODB.transact import transact
-
-
-def configure_logging(scriptname):
-    '''Configure logging for zenoss.toolbox tool usage'''
-
-    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
-    if not os.path.exists('/tmp'):
-        print "/tmp doesn't exist - aborting"
-        exit(1)
-    zenhome_path = os.getenv("ZENHOME")
-    if not zenhome_path:
-        print "$ZENHOME undefined - are you running as the zenoss user?"
-        exit(1)
-    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
-    if not os.path.exists(log_file_path):
-        os.makedirs(log_file_path)
-    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
-    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
-
-    # Create full path filename string for logfile, create RotatingFileHandler
-    toolbox_log = logging.getLogger("%s" % (scriptname))
-    toolbox_log.setLevel(logging.INFO)
-    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
-    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
-
-    # Set logging.Formatter for format and datefmt, attach handler
-    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.DEBUG)
-    toolbox_log.addHandler(handler)
-
-    # Print initialization string to console, log status to logfile
-    toolbox_log.info("############################################################")
-    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
-    return toolbox_log
-
-
-def get_lock(process_name, log):
-    '''Global lock function to keep multiple tools from running at once'''
-    global lock_socket
-    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        lock_socket.bind('\0' + process_name)
-        log.debug("Acquired '%s' execution lock" % (process_name))
-    except socket.error:
-        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
-              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
-        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
-        log.info("############################################################")
-        return False
-    return True
 
 
 def inline_print(message):
@@ -250,15 +197,19 @@ def main():
        Builds list of available non-empty catalogs.'''
 
     execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
     cli_options = parse_options()
-    log = configure_logging('zennetworkclean')
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
     # Attempt to get the zenoss.toolbox lock before any actions performed
-    if not get_lock("zenoss.toolbox", log):
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
+
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
     # Obtain dmd ZenScriptBase connection
     dmd = ZenScriptBase(noopts=True, connect=True).dmd
