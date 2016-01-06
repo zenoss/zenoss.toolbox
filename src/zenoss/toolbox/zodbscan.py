@@ -301,17 +301,6 @@ Refers to a missing object:
         print
 
 
-#def parse_options():
-#    """Defines command-line options for script """
-#    parser = argparse.ArgumentParser(version=scriptVersion,
-#                                     description="Scans ZODB for dangling references. Additional documentation at "
-#                                                  "https://support.zenoss.com/hc/en-us/articles/203118175")
-#
-#    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-#                        help="verbose log output (debug logging)")
-#    return vars(parser.parse_args())
-#
-#
 def main():
     """Scans through ZODB checking objects for dangling references"""
 

@@ -32,7 +32,7 @@ def configure_logging(name, version, tmpdir):
         os.makedirs(log_file_path)
 
     # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
-    logging.basicConfig(filename=tmpdir+'/toolbox.log.tmp', filemode='w', level=logging.INFO)
+    logging.basicConfig(filename=os.path.join(tmpdir,'toolbox.log.tmp'), filemode='w', level=logging.INFO)
 
     # Create full path filename string for logfile, create RotatingFileHandler
     toolbox_log = logging.getLogger("%s" % (name))
@@ -98,6 +98,6 @@ def parse_options(scriptVersion, description_string):
     parser.add_argument("-v10", "--debug", action="store_true", default=False,
                         help="verbose log output (debug logging)")
     parser.add_argument("--tmpdir", action="store", default=calculatedTmpDir,
-                            help="only scan/fix specified catalog")
+                            help="override the TMPDIR setting")
 
     return parser
