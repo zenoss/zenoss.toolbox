@@ -6,10 +6,12 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
 scriptVersion = "2.0.0"
+scriptSummary = " - scans a ZODB path for POSKeyErrors - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203117795"
+
 
 import abc
 import argparse
@@ -24,19 +26,19 @@ import traceback
 import transaction
 import ZenToolboxUtils
 
-from time import localtime, strftime
-from ZODB.POSException import POSKeyError
-from ZODB.utils import u64
-from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
-from Products.ZenRelations.RelationshipBase import RelationshipBase
-from Products.ZenUtils.ZenScriptBase import ZenScriptBase
-from Products.ZenUtils.Utils import unused
 from Products.ZenModel.Device import Device
 from Products.ZenModel.ZenStatus import ZenStatus
+from Products.ZenRelations.RelationshipBase import RelationshipBase
+from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
+from Products.ZenUtils.Utils import unused
+from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from time import localtime, strftime
 try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
     pass
+from ZODB.POSException import POSKeyError
+from ZODB.utils import u64
 
 
 unused(Globals) 
@@ -462,18 +464,28 @@ def main():
 
     execution_start = time.time()
     scriptName = os.path.basename(__file__).split('.')[0]
-    cli_options = parse_options()
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
+    parser.add_argument("-f", "--fix", action="store_true", default=False,
+                        help="attempt to fix ZenRelationship objects")
+    parser.add_argument("-n", "--cycles", action="store", default="2", type=int,
+                        help="maximum times to cycle (with --fix)")
+    parser.add_argument("-p", "--path", action="store", default="/", type=str,
+                        help="base path to scan from (Devices.Server)?")
+    parser.add_argument("-u", "--unlimitedram", action="store_true", default=False,
+                        help="skip transaction.abort() - unbounded RAM, ~40%% faster")
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
-
-    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
     # Obtain dmd ZenScriptBase connection
     dmd = ZenScriptBase(noopts=True, connect=True).dmd

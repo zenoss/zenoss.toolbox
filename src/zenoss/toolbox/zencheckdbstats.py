@@ -6,10 +6,12 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.0"
+scriptVersion = "2.0.0"
+scriptSummary = " - gathers performance information about your DB - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/TBD"
+
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 import argparse
@@ -161,38 +163,31 @@ def log_MySQL_variables(mysql_connection, log):
         exit(1)
 
 
-def parse_options():
-    """Defines command-line options and defaults for script """
-    parser = argparse.ArgumentParser(version=scriptVersion, description="Gathers performance-related information "
-                                     "about your database.  Documentation at https://support.zenoss.com/hc/en-us/articles/TBD")
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (NOTE: lots of output)")
+def main():
+    '''Gathers metrics and statistics about the database that Zenoss uses for Zope.'''
+
+    execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
     parser.add_argument("-n", "-t", "--times", action="store", default=1, type=int,
                         help="number of times to gather data")
     parser.add_argument("-g", "--gap", action="store", default=60, type=int,
                         help="gap between gathering subsequent datapoints")
     parser.add_argument("-l3", "--level3", action="store_true", default=False,
                         help="Data gathering for L3 (standardized parameters)")
-    return vars(parser.parse_args())
-
-
-def main():
-    '''Gathers metrics and statistics about the database that Zenoss uses for Zope.'''
-
-    execution_start = time.time()
-    scriptName = os.path.basename(__file__).split('.')[0]
-    cli_options = parse_options()
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
-    # Attempt to get the zenoss.toolbox.checkdbstats lock before any actions performed
-    if not ZenToolboxUtils.get_lock("zenoss.toolbox.checkdbstats", log):
-        sys.exit(1)
-
     print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
           (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
+    # Attempt to get the zenoss.toolbox lock before any actions performed
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox.checkdbstats", log):
+        sys.exit(1)
 
     # Load up the contents of global.conf for using with MySQL
     global_conf_dict = parse_global_conf(os.environ['ZENHOME'] + '/etc/global.conf', log)

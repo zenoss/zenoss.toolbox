@@ -6,10 +6,12 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.1.0"
+scriptVersion = "2.0.0"
+scriptSummary = " - scans ZODB object ZenRelations for issues - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203121165"
+
 
 import argparse
 import datetime
@@ -22,15 +24,14 @@ import traceback
 import transaction
 import ZenToolboxUtils
 
-from time import localtime, strftime
 from Products.CMFCore.utils import getToolByName
 from Products.ZenUtils.Utils import getAllConfmonObjects
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.Zuul.catalog.events import IndexingEvent
+from time import localtime, strftime
+from ZODB.POSException import POSKeyError
 from ZODB.transact import transact
 from zope.event import notify
-
-from ZODB.POSException import POSKeyError
 
 
 def inline_print(message):
@@ -147,53 +148,41 @@ def scan_relationships(attempt_fix, max_cycles, use_unlimited_memory, dmd, log, 
     print
 
 
-def parse_options():
-    """Defines and parses command-line options for script """
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans ZenRelations for issues. Additional documentat at "
-                                                  "https://support.zenoss.com/hc/en-us/articles/203121165")
+def main():
+    '''Scans zodb objects for ZenRelations issues.  If --fix, attempts repair.'''
 
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
+    execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to remove any invalid references")
     parser.add_argument("-n", "--cycles", action="store", default="2", type=int,
                         help="maximum times to cycle (with --fix)")
     parser.add_argument("-u", "--unlimitedram", action="store_true", default=False,
                         help="skip transaction.abort() - unbounded RAM, ~40%% faster")
-
-    return vars(parser.parse_args())
-
-
-def main():
-    '''Scans zodb objects for ZenRelations issues.  If --fix, attempts repair.'''
-
-    execution_start = time.time()
-    scriptName = os.path.basename(__file__).split('.')[0]
-    cli_options = parse_options()
-
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
-
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
+
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
+    # Attempt to get the zenoss.toolbox lock before any actions performed
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
+        sys.exit(1)
+
+    # Obtain dmd ZenScriptBase connection
+    dmd = ZenScriptBase(noopts=True, connect=True).dmd
+    log.debug("ZenScriptBase connection obtained")
 
     counters = {
         'item_count': ZenToolboxUtils.Counter(0),
         'error_count': ZenToolboxUtils.Counter(0),
         'repair_count': ZenToolboxUtils.Counter(0)
         }
-
-    # Attempt to get the zenoss.toolbox lock before any actions performed
-    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
-        sys.exit(1)
-
-    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
-
-    # Obtain dmd ZenScriptBase connection
-    dmd = ZenScriptBase(noopts=True, connect=True).dmd
-    log.debug("ZenScriptBase connection obtained")
 
     scan_relationships(cli_options['fix'], cli_options['cycles'], cli_options['unlimitedram'], dmd, log, counters)
 
