@@ -27,13 +27,8 @@ import transaction
 import ZenToolboxUtils
 
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 
 def scan_progress_message(done, fix, cycle, catalog, issues, chunk, log):

@@ -29,15 +29,10 @@ from Products.ZenUtils.Utils import getAllConfmonObjects
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.Zuul.catalog.events import IndexingEvent
 from time import localtime, strftime
+from ZenToolboxUtils import inline_print
 from ZODB.POSException import POSKeyError
 from ZODB.transact import transact
 from zope.event import notify
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 
 def progress_bar(items, errors, repairs, fix_value):

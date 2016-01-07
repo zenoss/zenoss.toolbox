@@ -37,18 +37,13 @@ from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from relstorage.zodbpack import schema_xml
 from time import localtime, strftime
+from ZenToolboxUtils import inline_print
 from ZODB.DB import DB
 from ZODB.POSException import POSKeyError
 from ZODB.transact import transact
 from ZODB.utils import u64
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 
 class Analyzer(UnpicklerBase):

@@ -32,13 +32,8 @@ import ZenToolboxUtils
 
 from collections import OrderedDict
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 
 def parse_global_conf(filename, log):

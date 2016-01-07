@@ -11,6 +11,7 @@ import argparse
 import logging
 import os
 import socket
+import sys
 import time
 
 from multiprocessing import Lock, Value
@@ -67,6 +68,12 @@ def get_lock(lock_name, log):
         log.info("############################################################")
         return False
     return True
+
+
+def inline_print(message):
+    '''Print message on a single line using sys.stdout.write, .flush'''
+    sys.stdout.write("\r%s" % (message))
+    sys.stdout.flush()
 
 
 class Counter(object):
