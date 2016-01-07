@@ -6,40 +6,41 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.1.0"
+scriptVersion = "2.0.0"
+scriptSummary = " - scans ZODB checking objects for dangling references - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203118175"
 
-import Globals
+
 import argparse
-import sys
-import os
-import logging
-import traceback
-import time
-import datetime
-import transaction
-import cStringIO
-import tempfile
 import cPickle
+import cStringIO
+import datetime
+import Globals
+import logging
+import os
+import sys
+import tempfile
+import time
+import traceback
+import transaction
 import ZConfig
 import ZenToolboxUtils
 
-from pickle import Unpickler as UnpicklerBase
 from collections import deque
-from time import localtime, strftime
-from relstorage.zodbpack import schema_xml
-from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from pickle import Unpickler as UnpicklerBase
+from Products.ZenRelations.RelationshipBase import RelationshipBase
+from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
 from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
-from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
-from Products.ZenRelations.RelationshipBase import RelationshipBase
-from ZODB.transact import transact
-from ZODB.POSException import POSKeyError
+from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from relstorage.zodbpack import schema_xml
+from time import localtime, strftime
 from ZODB.DB import DB
+from ZODB.POSException import POSKeyError
+from ZODB.transact import transact
 from ZODB.utils import u64
-
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
 
@@ -300,37 +301,26 @@ Refers to a missing object:
         print
 
 
-def parse_options():
-    """Defines command-line options for script """
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans ZODB for dangling references. Additional documentation at "
-                                                  "https://support.zenoss.com/hc/en-us/articles/203118175")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
-    return vars(parser.parse_args())
-
-
 def main():
     """Scans through ZODB checking objects for dangling references"""
 
     execution_start = time.time()
-    scriptName = os.path.basename(__file__).split('.')[0]
     sys.path.append ("/opt/zenoss/Products/ZenModel")               # From ZEN-12160
-
-    cli_options = parse_options()
-
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
-
-    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
     number_of_issues = ZenToolboxUtils.Counter(0)
 

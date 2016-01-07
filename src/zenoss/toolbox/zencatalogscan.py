@@ -6,10 +6,14 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.4.0"
+scriptVersion = "2.0.0"
+scriptSummary = " - scans catalogs for broken references - WARNING: Before using with --fix " \
+                "you MUST confirm zodbscan, findposkeyerror, and zenrelationscan return " \
+                "no errors. "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203118075"
+
 
 import argparse
 import datetime
@@ -301,17 +305,13 @@ def build_catalog_dict(dmd, log):
     return intermediate_catalog_dict
 
 
-def parse_options():
-    """Defines command-line options for script """
+def main():
+    """Scans catalogs for broken references.  If --fix, attempts to remove broken references."""
 
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans catalogs for broken references. WARNING: Before using with --fix "
-                                         "you must first confirm zodbscan, findposkeyerror, and zenrelationscan return "
-                                         "clean. Documentation at "
-                                         "https://support.zenoss.com/hc/en-us/articles/203118075")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
+    execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to remove any invalid references")
     parser.add_argument("-n", "--cycles", action="store", default="12", type=int,
@@ -322,28 +322,18 @@ def parse_options():
                         help="only scan/fix specified catalog")
     parser.add_argument("-e", "--events", action="store_true", default=False,
                         help="create Zenoss events with status")
-
-    return vars(parser.parse_args())
-
-
-def main():
-    """Scans catalogs for broken references.  If --fix, attempts to remove broken references."""
-
-    execution_start = time.time()
-    scriptName = os.path.basename(__file__).split('.')[0]
-    cli_options = parse_options()
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
-
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
-
-    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
     # Obtain dmd ZenScriptBase connection
     dmd = ZenScriptBase(noopts=True, connect=True).dmd

@@ -6,10 +6,12 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.1.0"
+scriptVersion = "2.0.0"
+scriptSummary = " - removes old and/or unused ip addresses - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203263699"
+
 
 import argparse
 import datetime
@@ -20,9 +22,9 @@ import sys
 import time
 import traceback
 import transaction
-from Acquisition import aq_parent
 import ZenToolboxUtils
 
+from Acquisition import aq_parent
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from ZODB.transact import transact
 
@@ -171,15 +173,14 @@ def build_catalog_dict(dmd, log):
     return intermediate_catalog_dict
 
 
-def parse_options():
-    """Defines command-line options for script """
+def main():
+    '''Checks for old/unused ip addresses.  If --fix, attempts to remove old unused ip addresses.
+       Builds list of available non-empty catalogs.'''
 
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Removes old unused ip addresses. Documentation available at "
-                                         "https://support.zenoss.com/hc/en-us/articles/203263699")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
+    execution_start = time.time()
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
     parser.add_argument("-f", "--fix", action="store_true", default=False,
                         help="attempt to remove any stale references")
     parser.add_argument("-n", "--cycles", action="store", default="12", type=int,
@@ -188,28 +189,18 @@ def parse_options():
                         help="output all supported catalogs")
     parser.add_argument("-c", "--catalog", action="store", default="",
                         help="only scan/fix specified catalog")
-
-    return vars(parser.parse_args())
-
-
-def main():
-    '''Removes old unused ip addresses.  If --fix, attempts to remove old unused ip addresses.
-       Builds list of available non-empty catalogs.'''
-
-    execution_start = time.time()
-    scriptName = os.path.basename(__file__).split('.')[0]
-    cli_options = parse_options()
-    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion)
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
-
-    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
     # Obtain dmd ZenScriptBase connection
     dmd = ZenScriptBase(noopts=True, connect=True).dmd
