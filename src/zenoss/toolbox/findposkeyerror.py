@@ -436,29 +436,6 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                   current_cycle, counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())
 
 
-def parse_options():
-    """Defines command-line options for script """
-    """ NOTE: With --unlimitedram in my testing, I have seen RAM usage grow to just over 2x the size of
-    'du -h /opt/zends/data/zodb'.  For a 20GB /opt/zends/data/zodb folder, I saw RAM usage of ~ 42GB"""
-
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans a zodb path for POSKeyErrors - addtional information "
-                                                 "at https://support.zenoss.com/hc/en-us/articles/203117795")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
-    parser.add_argument("-f", "--fix", action="store_true", default=False,
-                        help="attempt to fix ZenRelationship objects")
-    parser.add_argument("-n", "--cycles", action="store", default="2", type=int,
-                        help="maximum times to cycle (with --fix)")
-    parser.add_argument("-p", "--path", action="store", default="/", type=str,
-                        help="base path to scan from (Devices.Server)?")
-    parser.add_argument("-u", "--unlimitedram", action="store_true", default=False,
-                        help="skip transaction.abort() - unbounded RAM, ~40%% faster")
-
-    return vars(parser.parse_args())
-
-
 def main():
     """ Scans through zodb hierarchy (from user-supplied path, defaults to /,  checking for PKEs """
 
