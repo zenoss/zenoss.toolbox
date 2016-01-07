@@ -11,6 +11,7 @@ Changelog
  * Fixed ZEN-21446: zenindextool should use unified common functions
  * Fixed ZEN-21445: zennetworkclean should use unified common functions
  * Fixed ZEN-21440: ZenToolboxUtils not using system-defined $tmp, hardcoded to /tmp
+ * Fixed ZEN-21439: Update toolbox tool copyrights for 2016
 
 
 0.8.1
