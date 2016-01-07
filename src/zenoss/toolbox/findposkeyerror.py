@@ -37,17 +37,12 @@ try:
     from ZenPacks.zenoss.AdvancedSearch.SearchManager import SearchManager, SEARCH_MANAGER_ID
 except ImportError:
     pass
+from ZenToolboxUtils import inline_print
 from ZODB.POSException import POSKeyError
 from ZODB.utils import u64
 
 
 unused(Globals) 
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 
 def progress_bar(items, errors, repairs, fix_value, cycle):

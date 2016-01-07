@@ -26,14 +26,10 @@ import ZenToolboxUtils
 
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.Zuul.catalog.events import IndexingEvent
+from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
 from zope.event import notify
 
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 @transact
 def index_device(dev, dmd, log):
