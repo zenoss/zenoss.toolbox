@@ -91,7 +91,7 @@ def parse_options(scriptVersion, description_string):
     """Defines command-line options for script """
     parser = argparse.ArgumentParser(version=scriptVersion, description=description_string)
 
-    calculatedTmpDir = next(os.getenv(n) for n in ("TMP", "TEMP", "TMPDIR") if n in os.environ)
+    calculatedTmpDir = next((os.getenv(n) for n in ("TMP", "TEMP", "TMPDIR") if n in os.environ), None)
     if not calculatedTmpDir:
         calculatedTmpDir = "/tmp"
 
