@@ -375,18 +375,8 @@ def main():
             eventSummaryMsg = "zencatalogscan completed without errors (took %1.2f seconds)" % (time.time() - execution_start)
             eventSeverity = 2
 
-        dmd.ZenEventManager.sendEvent({
-            'device'        : 'localhost',
-            'summary'       : eventSummaryMsg,
-            'message'       : eventSummaryMsg,
-            'component'     : 'zenoss_toolbox',
-            'severity'      : eventSeverity,
-            'eventClass'    : '/Status',
-            'eventKey'      : "execution_status",
-            'dedupid'       : "zenoss_toolbox_zencatalogscan.execution_status",
-            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
-            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
-        })
+        ZenToolboxUtils.send_summary_event(eventSummaryMsg, eventSeverity, "execution_status", "zenoss_toolbox_zencatalogscan",
+                                           "zenoss_toolbox_zencatalogscan.execution_status", documentationURL, dmd)
 
     if any_issue and not cli_options['fix']:
         print("** WARNING ** Issues were detected - Consult KB article at")
