@@ -375,8 +375,11 @@ def main():
             eventSummaryMsg = "zencatalogscan completed without errors (took %1.2f seconds)" % (time.time() - execution_start)
             eventSeverity = 2
 
-        ZenToolboxUtils.send_summary_event(eventSummaryMsg, eventSeverity, "execution_status", "zenoss_toolbox_zencatalogscan",
-                                           "zenoss_toolbox_zencatalogscan.execution_status", documentationURL, dmd)
+        ZenToolboxUtils.send_summary_event(
+            eventSummaryMsg, eventSeverity,
+            scriptName, "executionStatus", 
+            documentationURL, dmd
+        )
 
     if any_issue and not cli_options['fix']:
         print("** WARNING ** Issues were detected - Consult KB article at")

@@ -110,18 +110,20 @@ def parse_options(scriptVersion, description_string):
     return parser
 
 
-def send_summary_event(eventSummaryMsg, eventSeverity, eventKey, eventClassKey, dedupid, docURL, dmd):
+def send_summary_event(eventSummary, eventSeverity, eventComponent, eventKey, docURL, dmd, eventMessage=""):
     """ Sends an event from a tool (with an established dmd connection) to Zenoss """
+
+    if eventMessage == "":
+        eventMessage = eventSummary
 
     dmd.ZenEventManager.sendEvent({
         'device'        : 'localhost',
-        'summary'       : eventSummaryMsg,
-        'message'       : eventSummaryMsg,
-        'component'     : 'zenoss_toolbox',
+        'summary'       : eventSummary,
+        'message'       : eventMessage,
+        'component'     : eventComponent,
         'severity'      : eventSeverity,
         'eventClass'    : '/Status',
         'eventKey'      : eventKey,
-        'dedupid'       : dedupid,
-        'eventClassKey' : eventClassKey,
+        'dedupid'       : '.'.join([eventComponent, eventKey]),
         'details'       : docURL
     })
