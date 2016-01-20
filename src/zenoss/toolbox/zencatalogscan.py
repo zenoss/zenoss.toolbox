@@ -134,6 +134,7 @@ def global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log, c
             transaction.abort()
 
     if create_events:
+        scriptName = os.path.basename(__file__).split('.')[0]
         if number_of_issues > 0:
             eventSummaryMsg = "'%s' - %d Error(s) Detected (%d total items)" % \
                                   ('global_catalog_RIDs', number_of_issues, number_of_items)
@@ -143,18 +144,11 @@ def global_catalog_rids(catalog_name, catalog_list, fix, max_cycles, dmd, log, c
                                   ('global_catalog_RIDs', number_of_items)
             eventSeverity = 1
 
-        dmd.ZenEventManager.sendEvent({
-            'device'        : 'localhost',
-            'summary'       : eventSummaryMsg,
-            'message'       : eventSummaryMsg,
-            'component'     : 'zenoss_toolbox',
-            'severity'      : eventSeverity,
-            'eventClass'    : '/Status',
-            'eventKey'      : "global_catalog_RIDs",
-            'dedupid'       : "zenoss_toolbox_zencatalogscan.global_catalog_RIDs",
-            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
-            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
-        })
+        ZenToolboxUtils.send_summary_event(
+            eventSummaryMsg, eventSeverity,
+            scriptName, 'global_catalog_RIDs',
+            documentationURL, dmd
+        )
 
 
 def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_events):
@@ -220,26 +214,20 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log, create_e
         scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, chunk_number, log)
 
     if create_events:
+        scriptName = os.path.basename(__file__).split('.')[0]
         if number_of_issues > 0:
             eventSummaryMsg = "'%s' - %d Error(s) Detected (%d total items)" % (catalog_name, number_of_issues, initial_catalog_size)
             eventSeverity = 4  
         else:
             eventSummaryMsg = "'%s' - No Errors Detected (%d total items)" % (catalog_name, initial_catalog_size)
             eventSeverity = 1
-     
-        dmd.ZenEventManager.sendEvent({
-            'device'        : 'localhost',
-            'summary'       : eventSummaryMsg,
-            'message'       : eventSummaryMsg,
-            'component'     : 'zenoss_toolbox',
-            'severity'      : eventSeverity,
-            'eventClass'    : '/Status',
-            'eventKey'      : "%s" % (catalog_name),
-            'dedupid'       : "zenoss_toolbox_zencatalogscan.%s" % (catalog_name),
-            'eventClassKey' : "zenoss_toolbox_zencatalogscan",
-            'details'       : "Consult https://support.zenoss.com/hc/en-us/articles/203118075 for additional information"
-        })
 
+        ZenToolboxUtils.send_summary_event(
+            eventSummaryMsg, eventSeverity,
+            scriptName, catalog_name,
+            documentationURL, dmd
+        )
+     
     return (number_of_issues != 0)
 
 
