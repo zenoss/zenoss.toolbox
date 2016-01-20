@@ -113,7 +113,7 @@ def parse_options(scriptVersion, description_string):
 def send_summary_event(eventSummary, eventSeverity, eventComponent, eventKey, docURL, dmd, eventMessage=""):
     """ Sends an event from a tool (with an established dmd connection) to Zenoss """
 
-    if eventMessage == "":
+    if not eventMessage:
         eventMessage = eventSummary
 
     dmd.ZenEventManager.sendEvent({
