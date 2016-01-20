@@ -108,3 +108,22 @@ def parse_options(scriptVersion, description_string):
                             help="override the TMPDIR setting")
 
     return parser
+
+
+def send_summary_event(eventSummary, eventSeverity, eventComponent, eventKey, docURL, dmd, eventMessage=""):
+    """ Sends an event from a tool (with an established dmd connection) to Zenoss """
+
+    if not eventMessage:
+        eventMessage = eventSummary
+
+    dmd.ZenEventManager.sendEvent({
+        'device'        : 'localhost',
+        'summary'       : eventSummary,
+        'message'       : eventMessage,
+        'component'     : eventComponent,
+        'severity'      : eventSeverity,
+        'eventClass'    : '/Status',
+        'eventKey'      : eventKey,
+        'dedupid'       : '.'.join([eventComponent, eventKey]),
+        'details'       : docURL
+    })

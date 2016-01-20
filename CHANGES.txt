@@ -13,6 +13,7 @@ Changelog
  * Fixed ZEN-21440: ZenToolboxUtils not using system-defined $tmp, hardcoded to /tmp
  * Fixed ZEN-21439: Update toolbox tool copyrights for 2016
  * Fixed ZEN-21476: Move inline_print to ZenToolboxUtils, refactor all tools to adapt
+ * Fixed ZEN-21477: Add the ability to create status events to ZenToolboxUtils
 
 
 0.8.1
