@@ -181,6 +181,22 @@ def main():
 
     scan_relationships(cli_options['fix'], cli_options['cycles'], cli_options['unlimitedram'], dmd, log, counters)
 
+    if not cli_options['skipEvents']:
+        if counters['error_count'].value():
+            eventSeverity = 4
+            eventSummaryMsg = "%s encountered %d errors (took %1.2f seconds)" % \
+                               (scriptName, counters['error_count'].value(), (time.time() - execution_start))
+        else:
+            eventSeverity = 2
+            eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % \
+                               (scriptName, (time.time() - execution_start))
+
+        ZenToolboxUtils.send_summary_event(
+            eventSummaryMsg, eventSeverity,
+            scriptName, "executionStatus",
+            documentationURL, dmd
+        )
+
     # Print final status summary, update log file with termination block
     log.info("zenrelationscan examined %d objects, encountered %d errors, and attempted %d repairs",
              counters['item_count'].value(), counters['error_count'].value(), counters['repair_count'].value())

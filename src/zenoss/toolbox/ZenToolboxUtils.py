@@ -106,6 +106,8 @@ def parse_options(scriptVersion, description_string):
                         help="verbose log output (debug logging)")
     parser.add_argument("--tmpdir", action="store", default=calculatedTmpDir,
                             help="override the TMPDIR setting")
+    parser.add_argument("-s", "--skipEvents", action="store_true", default=False,
+                        help="skip creating summary events")
 
     return parser
 

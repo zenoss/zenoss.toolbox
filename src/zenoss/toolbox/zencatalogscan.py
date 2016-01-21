@@ -303,8 +303,6 @@ def main():
                         help="output all supported catalogs")
     parser.add_argument("-c", "--catalog", action="store", default="",
                         help="only scan/fix specified catalog")
-    parser.add_argument("-e", "--events", action="store_true", default=False,
-                        help="create Zenoss events with status")
     cli_options = vars(parser.parse_args())
     log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
@@ -338,7 +336,7 @@ def main():
             if cli_options['catalog'] in present_catalog_dict.keys():
             # Catalog provided as parameter is present - scan just that catalog
                 any_issue = scan_catalog(cli_options['catalog'], present_catalog_dict[cli_options['catalog']],
-                                         cli_options['fix'], cli_options['cycles'], dmd, log, cli_options['events'])
+                                         cli_options['fix'], cli_options['cycles'], dmd, log, not cli_options['skipEvents'])
             else:
                 unrecognized_catalog = True
                 print("Catalog '%s' unrecognized - unable to scan" % (cli_options['catalog']))
@@ -347,7 +345,7 @@ def main():
         # Else scan for all catalogs in present_catalog_dict
             for catalog in present_catalog_dict.keys():
                 any_issue = scan_catalog(catalog, present_catalog_dict[catalog], cli_options['fix'],
-                                         cli_options['cycles'], dmd, log, cli_options['events']) or any_issue
+                                         cli_options['cycles'], dmd, log, not cli_options['skipEvents']) or any_issue
 
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -355,12 +353,12 @@ def main():
     log.info("zencatalogscan completed in %1.2f seconds" % (time.time() - execution_start))
     log.info("############################################################")
 
-    if cli_options['events']:
+    if not cli_options['skipEvents']:
         if any_issue: 
-            eventSummaryMsg = "zencatalogscan encoutered errors (took %1.2f seconds)" % (time.time() - execution_start)
+            eventSummaryMsg = "%s encountered errors (took %1.2f seconds)" % (scriptName, (time.time() - execution_start))
             eventSeverity = 4 
         else:
-            eventSummaryMsg = "zencatalogscan completed without errors (took %1.2f seconds)" % (time.time() - execution_start)
+            eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % (scriptName, (time.time() - execution_start))
             eventSeverity = 2
 
         ZenToolboxUtils.send_summary_event(

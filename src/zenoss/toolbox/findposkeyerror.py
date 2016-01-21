@@ -491,6 +491,22 @@ def main():
     log.info("findposkeyerror completed in %1.2f seconds", time.time() - execution_start)
     log.info("############################################################")
 
+    if not cli_options['skipEvents']:
+        if counters['error_count'].value():
+            eventSeverity = 4
+            eventSummaryMsg = "%s encountered %d errors (took %1.2f seconds)" % \
+                               (scriptName, counters['error_count'].value(), (time.time() - execution_start))
+        else:
+            eventSeverity = 2
+            eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % \
+                               (scriptName, (time.time() - execution_start))
+
+        ZenToolboxUtils.send_summary_event(
+            eventSummaryMsg, eventSeverity,
+            scriptName, "executionStatus",
+            documentationURL, dmd
+        )
+
     if ((counters['error_count'].value() > 0) and not cli_options['fix']):
         print("** WARNING ** Issues were detected - Consult KB article at")
         print("      https://support.zenoss.com/hc/en-us/articles/203117795\n")
