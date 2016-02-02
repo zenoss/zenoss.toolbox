@@ -32,7 +32,7 @@ from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
 
 
-class CatalogMetaObject(object):
+class CatalogScanInfo(object):
     def __init__(self, name, actualPath):
         self.prettyName = name
         self.dmdPath = actualPath
@@ -286,37 +286,37 @@ def build_catalog_list(dmd, log):
     """Builds a list of catalogs that are (present and not empty)"""
 
     catalogsToCheck = [
-        CatalogMetaObject('CiscoUCS.ucsSearchCatalog', 'dmd.Devices.CiscoUCS.ucsSearchCatalog'),
-        CatalogMetaObject('CloudStack.HostCatalog', 'dmd.Devices.CloudStack.HostCatalog'),
-        CatalogMetaObject('CloudStack.RouterVMCatalog', 'dmd.Devices.CloudStack.RouterVMCatalog'),
-        CatalogMetaObject('CloudStack.SystemVMCatalog', 'dmd.Devices.CloudStack.SystemVMCatalog'),
-        CatalogMetaObject('CloudStack.VirtualMachineCatalog', 'dmd.Devices.CloudStack.VirtualMachineCatalog'),
-        CatalogMetaObject('Devices.deviceSearch', 'dmd.Devices.deviceSearch'),
-        CatalogMetaObject('Devices.searchRRDTemplates', 'dmd.Devices.searchRRDTemplates'),
-        CatalogMetaObject('Events.eventClassSearch', 'dmd.Events.eventClassSearch'),
-        CatalogMetaObject('global_catalog', 'dmd.global_catalog'),
-        CatalogMetaObject('HP.Proliant.deviceSearch', 'dmd.Devices.Server.HP.Proliant.deviceSearch'),
-        CatalogMetaObject('IPv6Networks.ipSearch', 'dmd.IPv6Networks.ipSearch'),
-        CatalogMetaObject('JobManager.job_catalog', 'dmd.JobManager.job_catalog'),
-        CatalogMetaObject('Layer2.macs_catalog', 'dmd.Devices.macs_catalog'),
-        CatalogMetaObject('maintenanceWindowSearch', 'dmd.maintenanceWindowSearch'),
-        CatalogMetaObject('Manufacturers.productSearch', 'dmd.Manufacturers.productSearch'),
-        CatalogMetaObject('Mibs.mibSearch', 'dmd.Mibs.mibSearch'),
-        CatalogMetaObject('Networks.ipSearch', 'dmd.Networks.ipSearch'),
-        CatalogMetaObject('Services.serviceSearch', 'dmd.Services.serviceSearch'),
-        CatalogMetaObject('Storage.iqnCatalog', 'dmd.Devices.Storage.iqnCatalog'),
-        CatalogMetaObject('Storage.wwnCatalog', 'dmd.Devices.Storage.wwnCatalog'),
-        CatalogMetaObject('vCloud.vCloudVMSearch', 'dmd.Devices.vCloud.vCloudVMSearch'),
-        CatalogMetaObject('VMware.vmwareGuestSearch', 'dmd.Devices.VMware.vmwareGuestSearch'),
-        CatalogMetaObject('vSphere.lunCatalog', 'dmd.Devices.vSphere.lunCatalog'),
-        CatalogMetaObject('vSphere.pnicCatalog', 'dmd.Devices.vSphere.pnicCatalog'),
-        CatalogMetaObject('vSphere.vnicCatalog', 'dmd.Devices.vSphere.vnicCatalog'),
-        CatalogMetaObject('XenServer.PIFCatalog', 'dmd.Devices.XenServer.PIFCatalog'),
-        CatalogMetaObject('XenServer.VIFCatalog', 'dmd.Devices.XenServer.VIFCatalog'),
-        CatalogMetaObject('XenServer.XenServerCatalog', 'dmd.Devices.XenServer.XenServerCatalog'),
-        CatalogMetaObject('ZenLinkManager.layer2_catalog', 'dmd.ZenLinkManager.layer2_catalog'),
-        CatalogMetaObject('ZenLinkManager.layer3_catalog', 'dmd.ZenLinkManager.layer3_catalog'),
-        CatalogMetaObject('zenPackPersistence', 'dmd.zenPackPersistence')
+        CatalogScanInfo('CiscoUCS.ucsSearchCatalog', 'dmd.Devices.CiscoUCS.ucsSearchCatalog'),
+        CatalogScanInfo('CloudStack.HostCatalog', 'dmd.Devices.CloudStack.HostCatalog'),
+        CatalogScanInfo('CloudStack.RouterVMCatalog', 'dmd.Devices.CloudStack.RouterVMCatalog'),
+        CatalogScanInfo('CloudStack.SystemVMCatalog', 'dmd.Devices.CloudStack.SystemVMCatalog'),
+        CatalogScanInfo('CloudStack.VirtualMachineCatalog', 'dmd.Devices.CloudStack.VirtualMachineCatalog'),
+        CatalogScanInfo('Devices.deviceSearch', 'dmd.Devices.deviceSearch'),
+        CatalogScanInfo('Devices.searchRRDTemplates', 'dmd.Devices.searchRRDTemplates'),
+        CatalogScanInfo('Events.eventClassSearch', 'dmd.Events.eventClassSearch'),
+        CatalogScanInfo('global_catalog', 'dmd.global_catalog'),
+        CatalogScanInfo('HP.Proliant.deviceSearch', 'dmd.Devices.Server.HP.Proliant.deviceSearch'),
+        CatalogScanInfo('IPv6Networks.ipSearch', 'dmd.IPv6Networks.ipSearch'),
+        CatalogScanInfo('JobManager.job_catalog', 'dmd.JobManager.job_catalog'),
+        CatalogScanInfo('Layer2.macs_catalog', 'dmd.Devices.macs_catalog'),
+        CatalogScanInfo('maintenanceWindowSearch', 'dmd.maintenanceWindowSearch'),
+        CatalogScanInfo('Manufacturers.productSearch', 'dmd.Manufacturers.productSearch'),
+        CatalogScanInfo('Mibs.mibSearch', 'dmd.Mibs.mibSearch'),
+        CatalogScanInfo('Networks.ipSearch', 'dmd.Networks.ipSearch'),
+        CatalogScanInfo('Services.serviceSearch', 'dmd.Services.serviceSearch'),
+        CatalogScanInfo('Storage.iqnCatalog', 'dmd.Devices.Storage.iqnCatalog'),
+        CatalogScanInfo('Storage.wwnCatalog', 'dmd.Devices.Storage.wwnCatalog'),
+        CatalogScanInfo('vCloud.vCloudVMSearch', 'dmd.Devices.vCloud.vCloudVMSearch'),
+        CatalogScanInfo('VMware.vmwareGuestSearch', 'dmd.Devices.VMware.vmwareGuestSearch'),
+        CatalogScanInfo('vSphere.lunCatalog', 'dmd.Devices.vSphere.lunCatalog'),
+        CatalogScanInfo('vSphere.pnicCatalog', 'dmd.Devices.vSphere.pnicCatalog'),
+        CatalogScanInfo('vSphere.vnicCatalog', 'dmd.Devices.vSphere.vnicCatalog'),
+        CatalogScanInfo('XenServer.PIFCatalog', 'dmd.Devices.XenServer.PIFCatalog'),
+        CatalogScanInfo('XenServer.VIFCatalog', 'dmd.Devices.XenServer.VIFCatalog'),
+        CatalogScanInfo('XenServer.XenServerCatalog', 'dmd.Devices.XenServer.XenServerCatalog'),
+        CatalogScanInfo('ZenLinkManager.layer2_catalog', 'dmd.ZenLinkManager.layer2_catalog'),
+        CatalogScanInfo('ZenLinkManager.layer3_catalog', 'dmd.ZenLinkManager.layer3_catalog'),
+        CatalogScanInfo('zenPackPersistence', 'dmd.zenPackPersistence')
     ]
 
     log.debug("Checking %d defined catalogs for (presence and not empty)" % (len(catalogsToCheck)))
