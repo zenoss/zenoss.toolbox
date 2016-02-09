@@ -19,6 +19,7 @@ import sys
 import tempfile
 import shutil
 import atexit
+import traceback
 
 from validate4import import ValidationRunner
 from validate4import import parse_argz as parseVRunnerArgs
@@ -538,9 +539,14 @@ def main():
         genmd5(master_backup)
         make_export_tar(GL.target_path, GL.components_filename, remote_backups, master_backup, GL.flexera_dir)
 
-    except (Exception, KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit) as e:
         print str(e)
         cleanup(error=True)
+        sys.exit(1)
+
+    except:
+        print "One of the backup steps receiving this exception and cannot continue:"
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
     finally:
