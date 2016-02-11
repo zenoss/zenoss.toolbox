@@ -23,7 +23,9 @@ import time
 import traceback
 import transaction
 import ZenToolboxUtils
+ 
 
+from Products.ZCatalog.ProgressHandler import StdoutHandler
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.Zuul.catalog.events import IndexingEvent
 from ZenToolboxUtils import inline_print
@@ -48,13 +50,14 @@ def index_device(dev, dmd, log):
 def reindex_dmd_objects(name, type, dmd, log):
     """Performs the reindex.  Returns False if no issues encountered, otherwise True"""
     try:
-        inline_print("[%s] Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
-        if not (name == 'Devices'):
-            object_reference = eval(type)
-            object_reference.reIndex()
+        inline_print("[%s] Reindexing/rebuilding %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
+        if (name == "DeviceSearch"):
+            print("\n")
+            catalogReference = eval(type)
+            catalogReference.refreshCatalog(clear=1,pghandler=StdoutHandler())
             print("finished")
-            log.info("%s reIndex() completed successfully", name)
-        else: # Special case for Devices, using method from altReindex ZEN-10793
+            log.info("%s refreshCatalog() completed successfully", name)
+        elif (name == 'Devices'): # Special case for Devices, using method from altReindex ZEN-10793
             log.info("Reindexing Devices")
             output_count = 0
             for dev in dmd.Devices.getSubDevicesGen_recursive():
@@ -76,6 +79,12 @@ def reindex_dmd_objects(name, type, dmd, log):
                          (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices"))
             print ""
             log.info("%d Devices reindexed successfully" % (output_count))
+        else:
+            object_reference = eval(type)
+            object_reference.reIndex()
+            print("finished")
+            log.info("%s reIndex() completed successfully", name)
+
         dmd._p_jar.sync()
         transaction.commit()
         return False
@@ -122,7 +131,8 @@ def main():
         'Events': 'dmd.Events',
         'Manufacturers': 'dmd.Manufacturers',
         'Networks': 'dmd.Networks',
-        'Services': 'dmd.Services'
+        'Services': 'dmd.Services',
+        'DeviceSearch': ' dmd.Devices.deviceSearch'
         }
 
     if cli_options['list'] or not cli_options['type'] :

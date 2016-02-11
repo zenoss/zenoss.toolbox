@@ -20,6 +20,7 @@ Changelog
  * Fixed ZEN-21658: findposkeyerror needs --events option, executionStatus
  * Fixed ZEN-21722: zencatalogscan events don't specify if run with -f
  * Fixed ZEN-21441: zencatalogscan doesn't use ZenToolboxUtils Counter
+ * Fixed ZEN-21530: zenindextool should have option for deviceSearch 
 
 
 0.8.1
