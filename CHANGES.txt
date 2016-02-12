@@ -21,6 +21,8 @@ Changelog
  * Fixed ZEN-21722: zencatalogscan events don't specify if run with -f
  * Fixed ZEN-21441: zencatalogscan doesn't use ZenToolboxUtils Counter
  * Fixed ZEN-21530: zenindextool should have option for deviceSearch 
+ * Fixed ZEN-19373: zencheckdbstats doesn't take into account split databases
+ * Fixed ZEN-21438: zencheckdbstats has no documentation
 
 
 0.8.1
