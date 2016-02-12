@@ -66,7 +66,7 @@ def log_zends_conf(filename, log):
 
 
 def connect_to_mysql(database_dict, log):
-    log.info("Opening connection to MySQL/ZenDS for database %s at %s" % (database_dict['prettyName'], database_dict['host']))
+    log.info("Opening connection to MySQL/ZenDS for database %s at %s", database_dict['prettyName'], database_dict['host'])
     try:
         if os.environ.get('ZENDSHOME'):   # If ZENDSHOME is set, assume running with ZenDS
             if database_dict['host'] == 'localhost':
@@ -196,26 +196,26 @@ def main():
 
     # ZEN-19373: zencheckdbstats needs to take into account split databases
     databases_to_examine = []
-    intermediate_dict = {}
-    intermediate_dict['prettyName'] = "'zodb' Database"
-    intermediate_dict['socket'] = global_conf_dict['zodb-socket']
-    intermediate_dict['host'] = global_conf_dict['zodb-host']
-    intermediate_dict['port'] = global_conf_dict['zodb-port']
-    intermediate_dict['admin-user'] = global_conf_dict['zodb-admin-user']
-    intermediate_dict['admin-password'] = global_conf_dict['zodb-admin-password']
-    intermediate_dict['database'] = global_conf_dict['zodb-db']
-    intermediate_dict['mysql_results_list'] = []
+    intermediate_dict = { 'prettyName': "'zodb' Database",
+                          'socket': global_conf_dict['zodb-socket'],
+                          'host': global_conf_dict['zodb-host'],
+                          'port': global_conf_dict['zodb-port'], 
+                          'admin-user': global_conf_dict['zodb-admin-user'],
+                          'admin-password': global_conf_dict['zodb-admin-password'],
+                          'database': global_conf_dict['zodb-db'],
+                          'mysql_results_list': []
+                        }
     databases_to_examine.append(intermediate_dict)
     if global_conf_dict['zodb-host'] != global_conf_dict['zep-host']:
-        intermediate_dict = {}
-        intermediate_dict['prettyName'] = "'zenoss_zep' Database"
-        intermediate_dict['socket'] = global_conf_dict['zodb-socket']
-        intermediate_dict['host'] = global_conf_dict['zep-host']
-        intermediate_dict['port'] = global_conf_dict['zep-port']
-        intermediate_dict['admin-user'] = global_conf_dict['zep-admin-user']
-        intermediate_dict['admin-password'] = global_conf_dict['zep-admin-password']
-        intermediate_dict['database'] = global_conf_dict['zep-db']
-        intermediate_dict['mysql_results_list'] = []
+        intermediate_dict = { 'prettyName': "'zenoss_zep' Database",
+                              'socket': global_conf_dict['zodb-socket'],
+                              'host': global_conf_dict['zep-host'],
+                              'port': global_conf_dict['zep-port'],
+                              'admin-user': global_conf_dict['zep-admin-user'],
+                              'admin-password': global_conf_dict['zep-admin-password'],
+                              'database': global_conf_dict['zep-db'],
+                              'mysql_results_list': []
+                            }
         databases_to_examine.append(intermediate_dict)
 
     # If running in debug, log global.conf, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)
@@ -228,7 +228,7 @@ def main():
                 log_MySQL_variables(mysql_connection, log)
                 if mysql_connection:
                     mysql_connection.close()
-                    log.info("Closed connection to MySQL/ZenDS for database %s at %s" % (item['prettyName'], item['host']))
+                    log.info("Closed connection to MySQL/ZenDS for database %s at %s", item['prettyName'], item['host'])
         except Exception as e:
             print "Exception encountered: ", e
             log.error(e)
@@ -249,7 +249,7 @@ def main():
                 item['mysql_results_list'].append((current_time, mysql_results))
                 if mysql_connection:
                     mysql_connection.close()
-                    log.info("Closed connection to MySQL/ZenDS for database %s at %s" % (item['prettyName'], item['host']))
+                    log.info("Closed connection to MySQL/ZenDS for database %s at %s", item['prettyName'], item['host'])
         except Exception as e:
             print "Exception encountered: ", e
             log.error(e)
@@ -261,7 +261,7 @@ def main():
     print ("")
     for database in databases_to_examine:
         print("\n[%s] Results for %s:" % (time.strftime(TIME_FORMAT), database['prettyName']))
-        log.info("[%s] Final Results for %s:" % (time.strftime(TIME_FORMAT), database['prettyName']))
+        log.info("[%s] Final Results for %s:", time.strftime(TIME_FORMAT), database['prettyName'])
         observed_results_dict = OrderedDict([])
         observed_results_dict['History List Length'] = [item[1]['history_list_length'] for item in database['mysql_results_list']]
         observed_results_dict['Bufferpool Used (%)'] = [item[1]['buffer_pool_used_percentage'] for item in database['mysql_results_list']]
@@ -281,7 +281,7 @@ def main():
     print("\n[%s] Execution finished in %s\n" % (time.strftime(TIME_FORMAT),
                                                  datetime.timedelta(seconds=int(math.ceil(time.time() - execution_start)))))
     print("** Additional information and next steps at %s **\n" % documentationURL)
-    log.info("zencheckdbstats completed in %1.2f seconds" % (time.time() - execution_start))
+    log.info("zencheckdbstats completed in %1.2f seconds", time.time() - execution_start)
     log.info("############################################################")
     sys.exit(0)
 
