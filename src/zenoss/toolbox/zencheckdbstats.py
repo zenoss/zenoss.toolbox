@@ -10,7 +10,7 @@
 
 scriptVersion = "2.0.0"
 scriptSummary = " - gathers performance information about your DB - "
-documentationURL = "https://support.zenoss.com/hc/en-us/articles/TBD"
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/208050803"
 
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -65,25 +65,25 @@ def log_zends_conf(filename, log):
     zends_cnf_file.close()
 
 
-def connect_to_mysql(global_conf_dict, log):
-    log.info("Opening connection to MySQL/ZenDS at %s" % global_conf_dict['zodb-host'])
+def connect_to_mysql(database_dict, log):
+    log.info("Opening connection to MySQL/ZenDS for database %s at %s", database_dict['prettyName'], database_dict['host'])
     try:
         if os.environ.get('ZENDSHOME'):   # If ZENDSHOME is set, assume running with ZenDS
-            if global_conf_dict['zodb-host'] == 'localhost':
-                mysql_connection = MySQLdb.connect(unix_socket=global_conf_dict['zodb-socket'],
-                                                   user=global_conf_dict['zodb-admin-user'],
-                                                   passwd=global_conf_dict['zodb-admin-password'],
-                                                   db=global_conf_dict['zodb-db'])
+            if database_dict['host'] == 'localhost':
+                mysql_connection = MySQLdb.connect(unix_socket=database_dict['socket'],
+                                                   user=database_dict['admin-user'],
+                                                   passwd=database_dict['admin-password'],
+                                                   db=database_dict['database'])
             else:
-                mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
-                                                   user=global_conf_dict['zodb-admin-user'],
-                                                   passwd=global_conf_dict['zodb-admin-password'],
-                                                   db=global_conf_dict['zodb-db'])
+                mysql_connection = MySQLdb.connect(host=database_dict['host'], port=int(database_dict['port']),
+                                                   user=database_dict['admin-user'],
+                                                   passwd=database_dict['admin-password'],
+                                                   db=database_dict['database'])
         else:    # Assume MySQL (with no customized zodb-socket)
-            mysql_connection = MySQLdb.connect(host=global_conf_dict['zodb-host'], port=int(global_conf_dict['zodb-port']),
-                                               user=global_conf_dict['zodb-admin-user'],
-                                               passwd=global_conf_dict['zodb-admin-password'],
-                                               db=global_conf_dict['zodb-db'])
+            mysql_connection = MySQLdb.connect(host=database_dict['host'], port=int(database_dict['port']),
+                                               user=database_dict['admin-user'],
+                                               passwd=database_dict['admin-password'],
+                                                   db=database_dict['database'])
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
         log.error(e)
@@ -159,7 +159,7 @@ def log_MySQL_variables(mysql_connection, log):
 
 
 def main():
-    '''Gathers metrics and statistics about the database that Zenoss uses for Zope.'''
+    '''Gathers metrics and statistics about the database that Zenoss uses for Zope/ZEP.'''
 
     execution_start = time.time()
     scriptName = os.path.basename(__file__).split('.')[0]
@@ -184,32 +184,55 @@ def main():
     if not ZenToolboxUtils.get_lock("zenoss.toolbox.checkdbstats", log):
         sys.exit(1)
 
-    # Load up the contents of global.conf for using with MySQL
-    global_conf_dict = parse_global_conf(os.environ['ZENHOME'] + '/etc/global.conf', log)
-
     if cli_options['level3']:
         cli_options['times'] = 120
         cli_options['gap'] = 60
         cli_options['debug'] = True
-
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
-    # If running in debug, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)
+    # Load up the contents of global.conf for using with MySQL
+    global_conf_dict = parse_global_conf(os.environ['ZENHOME'] + '/etc/global.conf', log)
+
+    # ZEN-19373: zencheckdbstats needs to take into account split databases
+    databases_to_examine = []
+    intermediate_dict = { 'prettyName': "'zodb' Database",
+                          'socket': global_conf_dict['zodb-socket'],
+                          'host': global_conf_dict['zodb-host'],
+                          'port': global_conf_dict['zodb-port'], 
+                          'admin-user': global_conf_dict['zodb-admin-user'],
+                          'admin-password': global_conf_dict['zodb-admin-password'],
+                          'database': global_conf_dict['zodb-db'],
+                          'mysql_results_list': []
+                        }
+    databases_to_examine.append(intermediate_dict)
+    if global_conf_dict['zodb-host'] != global_conf_dict['zep-host']:
+        intermediate_dict = { 'prettyName': "'zenoss_zep' Database",
+                              'socket': global_conf_dict['zodb-socket'],
+                              'host': global_conf_dict['zep-host'],
+                              'port': global_conf_dict['zep-port'],
+                              'admin-user': global_conf_dict['zep-admin-user'],
+                              'admin-password': global_conf_dict['zep-admin-password'],
+                              'database': global_conf_dict['zep-db'],
+                              'mysql_results_list': []
+                            }
+        databases_to_examine.append(intermediate_dict)
+
+    # If running in debug, log global.conf, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)
     if cli_options['debug']:
         if global_conf_dict['zodb-host'] == 'localhost':
             log_zends_conf(os.environ['ZENDSHOME'] + '/etc/zends.cnf', log)
         try:
-            mysql_connection = connect_to_mysql(global_conf_dict, log)
-            log_MySQL_variables(mysql_connection, log)
+            for item in databases_to_examine:
+                mysql_connection = connect_to_mysql(item, log)
+                log_MySQL_variables(mysql_connection, log)
+                if mysql_connection:
+                    mysql_connection.close()
+                    log.info("Closed connection to MySQL/ZenDS for database %s at %s", item['prettyName'], item['host'])
         except Exception as e:
             print "Exception encountered: ", e
             log.error(e)
             exit(1)
-        finally:
-            if mysql_connection:
-                mysql_connection.close()
-            log.info("Closed connection to MySQL/ZenDS at %s" % global_conf_dict['zodb-host'])
 
     sample_count = 0
     mysql_results_list = []
@@ -220,43 +243,45 @@ def main():
         inline_print("[%s] Gathering MySQL/ZenDS metrics... (%d/%d)" %
                      (time.strftime(TIME_FORMAT), sample_count, cli_options['times']))
         try:
-            mysql_connection = connect_to_mysql(global_conf_dict, log)
-            mysql_results = gather_MySQL_statistics(mysql_connection, log)
+            for item in databases_to_examine:
+                mysql_connection = connect_to_mysql(item, log)
+                mysql_results = gather_MySQL_statistics(mysql_connection, log)
+                item['mysql_results_list'].append((current_time, mysql_results))
+                if mysql_connection:
+                    mysql_connection.close()
+                    log.info("Closed connection to MySQL/ZenDS for database %s at %s", item['prettyName'], item['host'])
         except Exception as e:
             print "Exception encountered: ", e
             log.error(e)
             exit(1)
-        finally:
-            if mysql_connection:
-                mysql_connection.close()
-            log.info("Closed connection to MySQL/ZenDS at %s" % global_conf_dict['zodb-host'])
-        mysql_results_list.append((current_time, mysql_results))
         if sample_count < cli_options['times']:
             time.sleep(cli_options['gap'])
 
     # Process and display results (calculate statistics)
-    print("\n\n[%s] Results:" % (time.strftime(TIME_FORMAT)))
-    log.info("[%s] Final Results:" % (time.strftime(TIME_FORMAT)))
-    observed_results_dict = OrderedDict([])
-    observed_results_dict['History List Length'] = [item[1]['history_list_length'] for item in mysql_results_list]
-    observed_results_dict['Bufferpool Used (%)'] = [item[1]['buffer_pool_used_percentage'] for item in mysql_results_list]
-    observed_results_dict['ACTIVE TRANSACTIONS'] = [item[1]['number_active_transactions'] for item in mysql_results_list]
-    observed_results_dict['ACTIVE TRANS > 100s'] = [item[1]['number_active_transactions_over'] for item in mysql_results_list]
+    print ("")
+    for database in databases_to_examine:
+        print("\n[%s] Results for %s:" % (time.strftime(TIME_FORMAT), database['prettyName']))
+        log.info("[%s] Final Results for %s:", time.strftime(TIME_FORMAT), database['prettyName'])
+        observed_results_dict = OrderedDict([])
+        observed_results_dict['History List Length'] = [item[1]['history_list_length'] for item in database['mysql_results_list']]
+        observed_results_dict['Bufferpool Used (%)'] = [item[1]['buffer_pool_used_percentage'] for item in database['mysql_results_list']]
+        observed_results_dict['ACTIVE TRANSACTIONS'] = [item[1]['number_active_transactions'] for item in database['mysql_results_list']]
+        observed_results_dict['ACTIVE TRANS > 100s'] = [item[1]['number_active_transactions_over'] for item in database['mysql_results_list']]
+        for key in observed_results_dict:
+            values = observed_results_dict[key]
+            if min(values) != max(values):
+                output_message = "[{}]  {}: {:<10} (Average {:.2f}, Minimum {}, Maximum {})".format(time.strftime(TIME_FORMAT), key, values[-1], float(sum(values)/len(values)), min(values), max(values))
+            else:
+                output_message = "[{}]  {}: {}".format(time.strftime(TIME_FORMAT), key, values[-1])
 
-    for key in observed_results_dict:
-        values = observed_results_dict[key]
-        if min(values) != max(values):
-            output_message = "[{}]  {}: {:<10} (Average {:.2f}, Minimum {}, Maximum {})".format(time.strftime(TIME_FORMAT), key, values[-1], float(sum(values)/len(values)), min(values), max(values))
-        else:
-            output_message = "[{}]  {}: {}".format(time.strftime(TIME_FORMAT), key, values[-1])
-
-        print output_message
-        log.info(output_message)
+            print output_message
+            log.info(output_message)
 
     # Print final status summary, update log file with termination block
     print("\n[%s] Execution finished in %s\n" % (time.strftime(TIME_FORMAT),
                                                  datetime.timedelta(seconds=int(math.ceil(time.time() - execution_start)))))
-    log.info("zencheckdbstats completed in %1.2f seconds" % (time.time() - execution_start))
+    print("** Additional information and next steps at %s **\n" % documentationURL)
+    log.info("zencheckdbstats completed in %1.2f seconds", time.time() - execution_start)
     log.info("############################################################")
     sys.exit(0)
 

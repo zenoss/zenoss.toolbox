@@ -46,7 +46,7 @@ zennetworkclean
 
 zencheckdebstats
 ----------------
-*How to use zencheckdbstats to gather DB performance statistics*
- * TBD
+*How to use zencheckdbstats to examine database performance*
+ * https://support.zenoss.com/hc/en-us/articles/208050803
 
 Author: Brian Bibeault (bbibeault@zenoss.com)
