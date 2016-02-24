@@ -1,6 +1,30 @@
 Changelog
 =========
 
+2.0.0
+--------------------
+ * Fixed ZEN-21425: zodbscan should use unified common functions
+ * Fixed ZEN-21424: zencatalogscan should use unified common functions
+ * Fixed ZEN-21426: zenrelationscan should use unified common functions
+ * Fixed ZEN-21417: findposkeyerror should use unified common functions
+ * Fixed ZEN-21447: zencheckdbstats should use unified common functions
+ * Fixed ZEN-21446: zenindextool should use unified common functions
+ * Fixed ZEN-21445: zennetworkclean should use unified common functions
+ * Fixed ZEN-21440: ZenToolboxUtils not using system-defined $tmp, hardcoded to /tmp
+ * Fixed ZEN-21439: Update toolbox tool copyrights for 2016
+ * Fixed ZEN-21476: Move inline_print to ZenToolboxUtils, refactor all tools to adapt
+ * Fixed ZEN-21477: Add the ability to create status events to ZenToolboxUtils
+ * Fixed ZEN-21656: zencatalogscan individual catalog events should use ZenToolboxUtils
+ * Fixed ZEN-21686: toolbox tools should by default generate events
+ * Fixed ZEN-21663: zenrelationscan needs --events option, executionStatus
+ * Fixed ZEN-21658: findposkeyerror needs --events option, executionStatus
+ * Fixed ZEN-21722: zencatalogscan events don't specify if run with -f
+ * Fixed ZEN-21441: zencatalogscan doesn't use ZenToolboxUtils Counter
+ * Fixed ZEN-21530: zenindextool should have option for deviceSearch 
+ * Fixed ZEN-19373: zencheckdbstats doesn't take into account split databases
+ * Fixed ZEN-21438: zencheckdbstats has no documentation
+
+
 0.8.1
 --------------------
  * Fixed ZEN-20252: findposkeyerror won't attempt fix on attributeError for getStatus()

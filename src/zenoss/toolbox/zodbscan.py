@@ -1,119 +1,47 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.3"
+scriptVersion = "2.0.0"
+scriptSummary = " - scans ZODB checking objects for dangling references - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203118175"
 
-import Globals
+
 import argparse
-import sys
-import os
-import traceback
-import logging
-import socket
-import time
-import datetime
-import transaction
-import cStringIO
-import tempfile
 import cPickle
+import cStringIO
+import datetime
+import Globals
+import logging
+import os
+import sys
+import tempfile
+import time
+import traceback
+import transaction
 import ZConfig
+import ZenToolboxUtils
 
-from pickle import Unpickler as UnpicklerBase
 from collections import deque
-from time import localtime, strftime
-from multiprocessing import Lock, Value
-from relstorage.zodbpack import schema_xml
-from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from pickle import Unpickler as UnpicklerBase
+from Products.ZenRelations.RelationshipBase import RelationshipBase
+from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
 from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
 from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
-from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
-from Products.ZenRelations.RelationshipBase import RelationshipBase
-from ZODB.transact import transact
-from ZODB.POSException import POSKeyError
+from Products.ZenUtils.ZenScriptBase import ZenScriptBase
+from relstorage.zodbpack import schema_xml
+from time import localtime, strftime
+from ZenToolboxUtils import inline_print
 from ZODB.DB import DB
+from ZODB.POSException import POSKeyError
+from ZODB.transact import transact
 from ZODB.utils import u64
-
-
-def configure_logging(scriptname):
-    '''Configure logging for zenoss.toolbox tool usage'''
-    
-    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
-    if not os.path.exists('/tmp'):
-        print "/tmp doesn't exist - aborting"
-        exit(1)
-    zenhome_path = os.getenv("ZENHOME")
-    if not zenhome_path:
-        print "$ZENHOME undefined - are you running as the zenoss user?"
-        exit(1)
-    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
-    if not os.path.exists(log_file_path):
-        os.makedirs(log_file_path)
-    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
-    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
-
-    # Create full path filename string for logfile, create RotatingFileHandler
-    toolbox_log = logging.getLogger("%s" % (scriptname))
-    toolbox_log.setLevel(logging.INFO)
-    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
-    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
-
-    # Set logging.Formatter for format and datefmt, attach handler
-    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.DEBUG)
-    toolbox_log.addHandler(handler)
-
-    # Print initialization string to console, log status to logfile
-    toolbox_log.info("############################################################")
-    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
-    return toolbox_log
-
-
-def get_lock(process_name, log):
-    '''Global lock function to keep multiple tools from running at once'''
-    global lock_socket
-    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        lock_socket.bind('\0' + process_name)
-        log.debug("Acquired '%s' execution lock" % (process_name))
-    except socket.error:
-        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
-              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
-        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
-        log.info("############################################################")
-        return False
-    return True
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
-
-
-class Counter(object):
-    def __init__(self, initval=0):
-        self.val = Value('i', initval)
-        self.lock = Lock()
-
-    def increment(self):
-        with self.lock:
-            self.val.value += 1
-
-    def value(self):
-        with self.lock:
-            return self.val.value
-
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
 
@@ -368,34 +296,28 @@ Refers to a missing object:
         print
 
 
-def parse_options():
-    """Defines command-line options for script """
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Scans ZODB for dangling references. Additional documentation at "
-                                                  "https://support.zenoss.com/hc/en-us/articles/203118175")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
-    return vars(parser.parse_args())
-
-
 def main():
     """Scans through ZODB checking objects for dangling references"""
 
     execution_start = time.time()
     sys.path.append ("/opt/zenoss/Products/ZenModel")               # From ZEN-12160
-
-    cli_options = parse_options()
-    log = configure_logging('zodbscan')
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
-    if not get_lock("zenoss.toolbox", log):
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
 
-    number_of_issues = Counter(0)
+    number_of_issues = ZenToolboxUtils.Counter(0)
 
     zodb_name = getGlobalConfiguration().get("zodb-db", "zodb")
 

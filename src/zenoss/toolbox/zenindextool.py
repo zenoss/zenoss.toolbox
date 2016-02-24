@@ -1,90 +1,37 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-
 #!/opt/zenoss/bin/python
 
-scriptVersion = "1.0.3"
+scriptVersion = "2.0.0"
+scriptSummary = " - re-indexes top-level DMD organizers - "
+documentationURL = "https://support.zenoss.com/hc/en-us/articles/203263689"
+
 
 import argparse
 import datetime
 import Globals
 import logging
 import os
-import socket
 import sys
 import time
 import traceback
 import transaction
+import ZenToolboxUtils
+ 
 
+from Products.ZCatalog.ProgressHandler import StdoutHandler
 from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from Products.Zuul.catalog.events import IndexingEvent
+from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
 from zope.event import notify
 
-
-def configure_logging(scriptname):
-    '''Configure logging for zenoss.toolbox tool usage'''
-
-    # Confirm /tmp, $ZENHOME and check for $ZENHOME/log/toolbox (create if needed)
-    if not os.path.exists('/tmp'):
-        print "/tmp doesn't exist - aborting"
-        exit(1)
-    zenhome_path = os.getenv("ZENHOME")
-    if not zenhome_path:
-        print "$ZENHOME undefined - are you running as the zenoss user?"
-        exit(1)
-    log_file_path = os.path.join(zenhome_path, 'log', 'toolbox')
-    if not os.path.exists(log_file_path):
-        os.makedirs(log_file_path)
-    # Setup "trash" toolbox log file (needed for ZenScriptBase log overriding)
-    logging.basicConfig(filename='/tmp/toolbox.log.tmp', filemode='w', level=logging.INFO)
-
-    # Create full path filename string for logfile, create RotatingFileHandler
-    toolbox_log = logging.getLogger("%s" % (scriptname))
-    toolbox_log.setLevel(logging.INFO)
-    log_file_name = os.path.join(zenhome_path, 'log', 'toolbox', '%s.log' % (scriptname))
-    handler = logging.handlers.RotatingFileHandler(log_file_name, maxBytes=8192*1024, backupCount=5)
-
-    # Set logging.Formatter for format and datefmt, attach handler
-    formatter = logging.Formatter('%(asctime)s,%(msecs)03d %(levelname)s %(name)s: %(message)s', '%Y-%m-%d %H:%M:%S')
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.DEBUG)
-    toolbox_log.addHandler(handler)
-
-    # Print initialization string to console, log status to logfile
-    toolbox_log.info("############################################################")
-    print("\n[%s] Initializing %s version %s (detailed log at %s)\n" %
-          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptname, scriptVersion, log_file_name))
-    toolbox_log.info("Initializing %s (version %s)", scriptname, scriptVersion)
-    return toolbox_log
-
-
-def get_lock(process_name, log):
-    '''Global lock function to keep multiple tools from running at once'''
-    global lock_socket
-    lock_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        lock_socket.bind('\0' + process_name)
-        log.debug("Acquired '%s' execution lock" % (process_name))
-    except socket.error:
-        print("[%s] Unable to acquire %s socket lock - are other tools already running?\n" %
-              (time.strftime("%Y-%m-%d %H:%M:%S"), process_name))
-        log.error("'%s' lock already exists - unable to acquire - exiting" % (process_name))
-        log.info("############################################################")
-        return False
-    return True
-
-
-def inline_print(message):
-    '''Print message on a single line using sys.stdout.write, .flush'''
-    sys.stdout.write("\r%s" % (message))
-    sys.stdout.flush()
 
 @transact
 def index_device(dev, dmd, log):
@@ -103,13 +50,14 @@ def index_device(dev, dmd, log):
 def reindex_dmd_objects(name, type, dmd, log):
     """Performs the reindex.  Returns False if no issues encountered, otherwise True"""
     try:
-        inline_print("[%s] Reindexing %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
-        if not (name == 'Devices'):
-            object_reference = eval(type)
-            object_reference.reIndex()
+        inline_print("[%s] Reindexing/rebuilding %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
+        if (name == "DeviceSearch"):
+            print("\n")
+            catalogReference = eval(type)
+            catalogReference.refreshCatalog(clear=1,pghandler=StdoutHandler())
             print("finished")
-            log.info("%s reIndex() completed successfully", name)
-        else: # Special case for Devices, using method from altReindex ZEN-10793
+            log.info("%s refreshCatalog() completed successfully", name)
+        elif (name == 'Devices'): # Special case for Devices, using method from altReindex ZEN-10793
             log.info("Reindexing Devices")
             output_count = 0
             for dev in dmd.Devices.getSubDevicesGen_recursive():
@@ -131,6 +79,12 @@ def reindex_dmd_objects(name, type, dmd, log):
                          (time.strftime("%Y-%m-%d %H:%M:%S"), "Devices"))
             print ""
             log.info("%d Devices reindexed successfully" % (output_count))
+        else:
+            object_reference = eval(type)
+            object_reference.reIndex()
+            print("finished")
+            log.info("%s reIndex() completed successfully", name)
+
         dmd._p_jar.sync()
         transaction.commit()
         return False
@@ -141,35 +95,28 @@ def reindex_dmd_objects(name, type, dmd, log):
         return True
 
 
-def parse_options():
-    """Defines command-line options for script """
-
-    parser = argparse.ArgumentParser(version=scriptVersion,
-                                     description="Reindexes top-level organizers. Documentation available at "
-                                     "https://support.zenoss.com/hc/en-us/articles/203263689")
-
-    parser.add_argument("-v10", "--debug", action="store_true", default=False,
-                        help="verbose log output (debug logging)")
-    parser.add_argument("-l", "--list", action="store_true", default=False,
-                        help="output all supported reIndex() types")
-    parser.add_argument("-t", "--type", action="store", default="",
-                        help="specify which type to reIndex()")
-
-    return vars(parser.parse_args())
-
-
 def main():
     '''Performs reindex call on different DMD categories (used to be a part of zencatalogscan)'''
 
     execution_start = time.time()
-    cli_options = parse_options()
-    log = configure_logging('zenindextool')
+    scriptName = os.path.basename(__file__).split('.')[0]
+    parser = ZenToolboxUtils.parse_options(scriptVersion, scriptName + scriptSummary + documentationURL)
+    # Add in any specific parser arguments for %scriptName
+    parser.add_argument("-l", "--list", action="store_true", default=False,
+                        help="output all supported reIndex() types")
+    parser.add_argument("-t", "--type", action="store", default="",
+                        help="specify which type to reIndex()")
+    cli_options = vars(parser.parse_args())
+    log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cli_options['tmpdir'])
     log.info("Command line options: %s" % (cli_options))
     if cli_options['debug']:
         log.setLevel(logging.DEBUG)
 
+    print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
+          (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
-    if not get_lock("zenoss.toolbox", log):
+    if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
 
     # Obtain dmd ZenScriptBase connection
@@ -184,7 +131,8 @@ def main():
         'Events': 'dmd.Events',
         'Manufacturers': 'dmd.Manufacturers',
         'Networks': 'dmd.Networks',
-        'Services': 'dmd.Services'
+        'Services': 'dmd.Services',
+        'DeviceSearch': ' dmd.Devices.deviceSearch'
         }
 
     if cli_options['list'] or not cli_options['type'] :

@@ -1,7 +1,7 @@
 #!/opt/zenoss/bin/python
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2015, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2016, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -18,7 +18,8 @@ import subprocess
 import sys
 import tempfile
 import shutil
-import re
+import atexit
+import traceback
 
 from validate4import import ValidationRunner
 from validate4import import parse_argz as parseVRunnerArgs
@@ -39,11 +40,13 @@ class GL:
 
     dmd_uuid_filename =     'dmd_uuid.txt'
     components_filename =   'componentList.txt'
+    map_filename =          'rrdpath.map'
     md5_filename =          'backup.md5'
 
     dmd = 0
     args = 0
     backupSize = 0
+    diskSize = 0
     thetime = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
     target_vol = None   # used only by scsi mount target dir
@@ -87,17 +90,19 @@ class GL:
         else:
             cls.tmp_dir = tempfile.mkdtemp(dir=cls.target_dir)
 
+        cls.backup_dir = os.path.join(cls.tmp_dir, 'backups')
         # now create the tmp dir
         cls.dmd_uuid_filename =     os.path.join(cls.tmp_dir, 'dmd_uuid.txt')
         cls.components_filename =   os.path.join(cls.tmp_dir, 'componentList.txt')
+        cls.map_filename =          os.path.join(cls.tmp_dir, 'rrdpath.map')
         cls.md5_filename =          os.path.join(cls.tmp_dir, 'backup.md5')
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="4.x export script")
+    parser = argparse.ArgumentParser(description="4.x export script (ver:%s)" % scriptVersion)
     outputGroup = parser.add_mutually_exclusive_group()
     outputGroup.add_argument('-f', '--filename', help='the name of export file. export is created in the current directory. if unspecified, name is 4x-export-YYmmdd-HHMMSS.tar', default=None)
-    outputGroup.add_argument('-s', '--scsi', help='the linux device id of a device on the same scsi_host as /dev/sda.', default=None)
+    outputGroup.add_argument('-s', '--scsi', help='use a virtual disk for export target', action='store_true', default=False)
     outputGroup.add_argument('--dry-run', help='perform a dry run of the backup, and report the estimated required disk space for the backup', action='store_true')
     parser.add_argument('-z', '--no-zodb', help="don't backup zodb.", action='store_true', default=False)
     parser.add_argument('-e', '--no-eventsdb', help="don't backup events.", action='store_true', default=False)
@@ -141,7 +146,10 @@ def backup_remote_collectors(backup_dir):
         hub, collector, hostname = line.split(',')
         remote_backup_filename = '%s-%s-perf-backup-%s.tgz' % (hub, collector, GL.thetime)
         remote_backup_fn = os.path.join(backup_dir, remote_backup_filename)
-        remotebackupcmd = ['dc-admin', '--hub-pattern', hub, '--collector-pattern', collector, 'exec', '/opt/zenoss/bin/zenbackup', '--file=%s' % remote_backup_fn, '--no-eventsdb', '--no-zodb']
+        remotebackupcmd = ['dc-admin', '--hub-pattern', hub, '--collector-pattern',
+                           collector, 'exec', '/opt/zenoss/bin/zenbackup',
+                           '--file=%s' % remote_backup_fn, '--no-eventsdb', '--no-zodb',
+                           '--temp-dir=%s' % GL.tmp_dir]
         remotezbresult = subprocess.call(remotebackupcmd)
         if remotezbresult is not 0:
             print 'backup failed on remote collector %s, aborting ...' % collector
@@ -161,8 +169,10 @@ def backup_master(backup_dir):
     print 'making new backup ...'
     before_dir = set(os.listdir(backup_dir))
     zbcommand = ['zenbackup']
-    if GL.args.temp_dir:
-        zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
+
+    zbcommand.append('--file=%s' % os.path.join(GL.backup_dir, 'zenbackup_4x.tgz'))
+    zbcommand.append('--temp-dir=%s' % GL.tmp_dir)
+
     if GL.args.no_zodb:
         zbcommand.append('--no-zodb')
     if GL.args.no_eventsdb:
@@ -171,9 +181,9 @@ def backup_master(backup_dir):
         zbcommand.append('--no-perfdata')
 
     try:
-        raw_input("All Zenoss services will be stopped to export data for migration.\n"
+        raw_input("\nAll Zenoss services will be stopped to export data for migration.\n"
                 "The services are restarted once the backup completes.\n\n"
-                "Press ENTER to continue or <CTRL+C> to quit\n")
+                "Press ENTER to continue or <CTRL+C> to quit")
     except KeyboardInterrupt:
         raise
 
@@ -192,6 +202,26 @@ def backup_master(backup_dir):
     after_dir = set(os.listdir(backup_dir))
     backup_path = os.path.join(backup_dir, list(after_dir - before_dir)[0])
     return backup_path
+
+
+def get_map(c):
+    _pPath = c.getPrimaryPath()
+    _map = "%s|%s\n" % (c.rrdPath(), '/'.join(_pPath))
+    return _map
+
+
+def export_map_list():
+    print 'exporting rrdpath map ...'
+    devcount = 0
+    with open(GL.map_filename, 'w') as fp:
+        for dev in GL.dmd.Devices.getSubDevices():
+            fp.write('%s' % get_map(dev))
+            devcount += 1
+            for comp in dev.getMonitoredComponents():
+                fp.write('%s' % get_map(comp))
+                devcount += 1
+    print 'a total of %d map exported' % devcount
+    print 'map exported'
 
 
 def export_component_list():
@@ -236,6 +266,7 @@ def add_to_tar(tar_name, path_name):
 
 def make_export_tar(tar_file, components_filename, remote_backups, master_backup_path, flexera_dir):
     add_to_tar(tar_file, components_filename)
+    add_to_tar(tar_file, GL.map_filename)
     add_to_tar(tar_file, GL.dmd_uuid_filename)
 
     for _one in remote_backups:
@@ -252,17 +283,20 @@ def make_export_tar(tar_file, components_filename, remote_backups, master_backup
 
 def cleanup(error=False):
     if GL.args:
+        # remove the target file
+        if GL.target_path and error:
+            try:
+                os.remove(GL.target_path)
+            except:
+                pass
+
+        # cleanup the temp space
         if not GL.args.debug:
             try:
                 shutil.rmtree(GL.tmp_dir)
                 if GL.args.scsi:
                     print "Unmounting - enter root password when prompted ->"
-                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
-            except:
-                pass
-        if GL.target_path and error:
-            try:
-                os.remove(GL.target_path)
+                    subprocess.check_call(["/bin/su", "-c" "/opt/zenoss/bin/use_scsi -u %s" % GL.target_vol])
             except:
                 pass
 
@@ -350,13 +384,18 @@ def dryRun():
     backupSize += perfDataSize
     print 'Local performance data estimated to need %d MB' % perfDataSize
 
-    # After staging everything individually, it gets tarred up, so at worst, it
-    # needs double
-    backupSize *= 2.0
-    GL.backupSize = backupSize/1000
+    # After staging everything individually, it gets tarred up,
+    # counting the tmp area, the zenbackup file and the final file
+    # we needs triple and 10% additional margin
+    backupSize *= 3.0
 
-    # adding 10% buffer
-    print 'Total estimated free space needed for export is up to %d GB' % (GL.backupSize * 1.1 + 1)
+    GL.backupSize = int(backupSize/1000) + 1
+
+    print 'Total estimated free space needed for export is up to %d GB' % GL.backupSize
+
+    # adding the ext4 filesystem conservative 3.2~5% overhead for the diskSize
+    GL.diskSize = int(GL.backupSize*1.05 + 1)
+    print 'Expected export disk size should be at least: %d GiB' % GL.diskSize
 
 
 def freeSpaceG(fname):
@@ -366,12 +405,10 @@ def freeSpaceG(fname):
 
 
 def checkSpace():
-    dryRun()
-
     # check tmp dir
     avail = freeSpaceG(GL.tmp_dir)
     if avail < GL.backupSize:
-        print "Insufficient temp space in %s: %d GB, %d GB is needed." % (GL.tmp_dir, avail, GL.backupSize)
+        print "Insufficient temp space of %s: %d GB, %d GB is needed." % (GL.tmp_dir, avail, GL.backupSize)
         cleanup(False)
         sys.exit(1)
     else:
@@ -381,21 +418,11 @@ def checkSpace():
     avail = freeSpaceG(GL.target_path)
     dname = os.path.dirname(GL.target_dir)
     if avail < GL.backupSize:
-        print "Insufficient backup space in %s: %d GB, %d GB is needed." % (dname, avail, GL.backupSize)
+        print "Insufficient backup space of %s: %d GB, %d GB is needed." % (dname, avail, GL.backupSize)
         cleanup(False)
         sys.exit(1)
     else:
         print "Available backup space of %s: %d GB." % (dname, avail)
-
-
-def get_sda_hostid():
-    # extract the hostid from the existing sda disk
-    _line = subprocess.check_output(['/bin/ls', '-l', '/sys/block/sda'])
-    _m = re.search('.*/host([0-9]+)/.*', _line)
-    if _m:
-        return _m.group(1)
-    else:
-        return ''
 
 
 def prep_scsi():
@@ -404,15 +431,12 @@ def prep_scsi():
 
     # mount the provided scsi disk
     try:
-        GL.sda_host = get_sda_hostid()
-        if not GL.sda_host:
-            raise
-
-        print "Preparing disk - enter root password when prompted ->"
-        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -m %s:%s %s" % (GL.sda_host, GL.args.scsi, GL.target_vol)])
+        print "\nVerify that the export disk is not added to the virtual machine ..."
+        print "\nEnter root password when prompted ->"
+        subprocess.check_call(["/bin/su", "-c", "/opt/zenoss/bin/use_scsi -s %s -m %s" % (GL.diskSize, GL.target_vol)])
 
     except:
-        print 'Failed to prepare %s as the export4 disk!' % GL.args.scsi
+        print 'Failed to prepare the export4 disk!'
         sys.exit(1)
 
     subprocess.check_call(['/bin/mkdir', '-p', GL.target_dir])
@@ -440,7 +464,7 @@ def prep_target():
             print '%s is accessible ...' % GL.target_file
     except:
         if GL.args.scsi:
-            print 'Cannot access SCSI node (%s)! please check host/id ...' % GL.args.scsi
+            print 'Cannot access SCSI drive! ...'
         else:
             print 'Cannot open %s! please check accessibility ...' % GL.target_path
 
@@ -450,16 +474,25 @@ def prep_target():
     return
 
 
+def exit_handler():
+    print "Exiting ..."
+    cleanup(False)
+
+
 def main():
+    atexit.register(exit_handler)
+
     try:
         parse_arguments()
 
         # based on args, we initialize globally used variables
         GL.init()
 
+        # always do a dryRun
+        print 'Calculating free space needed for backup'
+        dryRun()
+
         if GL.args.dry_run:
-            print 'Calculating free space needed for backup'
-            dryRun()
             sys.exit()
 
         print 'Running validations'
@@ -501,13 +534,19 @@ def main():
         master_backup = backup_master(GL.backup_dir)
 
         export_component_list()
+        export_map_list()
         export_dmduuid()
         genmd5(master_backup)
         make_export_tar(GL.target_path, GL.components_filename, remote_backups, master_backup, GL.flexera_dir)
 
-    except (Exception, KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit) as e:
         print str(e)
         cleanup(error=True)
+        sys.exit(1)
+
+    except:
+        print "One of the backup steps receiving this exception and cannot continue:"
+        traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
     finally:
