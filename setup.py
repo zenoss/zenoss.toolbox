@@ -3,7 +3,7 @@ import os
 
 here = lambda *x:os.path.join(os.path.dirname(__file__), *x)
 
-version = '2.0.0'
+version = '2.1.0dev'
 
 long_description = (
     open(here('README.rst')).read()
