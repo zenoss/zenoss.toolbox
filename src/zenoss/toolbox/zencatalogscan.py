@@ -368,10 +368,9 @@ def main():
         while True:
             user_answer = raw_input("You should run findposkeyerror, "
                                     "zenrelationscan, zodbscan before "
-                                    "running zencatalogscan -f cause "
-                                    "it may damage your data. If you "
-                                    "done it print [y] to continue "
-                                    "and [n] to interrupt : ")
+                                    "running zencatalogscan -f before "
+                                    "proceeding. Otherwise it may damage your "
+                                    "data. Do you want to continue? [y/n]")
             if user_answer == "y":
                 break
             elif user_answer == "n":
