@@ -363,6 +363,20 @@ def main():
     print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
           (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
 
+    # Give user option to stop if he hadn't run findposkeyerror, zenrelationscan, zodbscan
+    if cliOptions["fix"]:
+        while True:
+            user_answer = raw_input("You should run findposkeyerror, "
+                                    "zenrelationscan, zodbscan before "
+                                    "running zencatalogscan -f cause "
+                                    "it may damage your data. If you "
+                                    "done it print [y] to continue "
+                                    "and [n] to interrupt : ")
+            if user_answer == "y":
+                break
+            elif user_answer == "n":
+                sys.exit(1)
+
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
         sys.exit(1)
