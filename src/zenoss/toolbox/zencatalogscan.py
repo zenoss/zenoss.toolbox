@@ -371,8 +371,8 @@ def main():
         while True:
             user_answer = raw_input("You should run findposkeyerror, "
                                     "zenrelationscan, zodbscan before "
-                                    "running zencatalogscan -f before "
-                                    "proceeding. Otherwise it may damage your "
+                                    "running zencatalogscan -f. "
+                                    "Otherwise it may damage your "
                                     "data. Do you want to continue? [y/n]")
             if user_answer == "y":
                 break
