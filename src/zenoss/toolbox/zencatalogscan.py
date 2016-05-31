@@ -355,7 +355,7 @@ def main():
     parser.add_argument("-c", "--catalog", action="store", default="",
                         help="only scan/fix specified catalog")
     parser.add_argument("--force-fix", action="store_true", default=False,
-                        help="continue without prompting, relavant"
+                        help="continue without prompting, relevant "
                              "to '-f' option, but it may damage your data")
     cliOptions = vars(parser.parse_args())
     log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cliOptions['tmpdir'])
