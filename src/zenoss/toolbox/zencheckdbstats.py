@@ -69,7 +69,7 @@ def connect_to_mysql(database_dict, log):
     log.info("Opening connection to MySQL/ZenDS for database %s at %s", database_dict['prettyName'], database_dict['host'])
     try:
         if os.environ.get('ZENDSHOME'):   # If ZENDSHOME is set, assume running with ZenDS
-            if database_dict['host'] == 'localhost':
+            if database_dict['host'] == 'localhost' and 'zodb-socket' in database_dict:
                 mysql_connection = MySQLdb.connect(unix_socket=database_dict['socket'],
                                                    user=database_dict['admin-user'],
                                                    passwd=database_dict['admin-password'],
@@ -197,18 +197,19 @@ def main():
     # ZEN-19373: zencheckdbstats needs to take into account split databases
     databases_to_examine = []
     intermediate_dict = { 'prettyName': "'zodb' Database",
-                          'socket': global_conf_dict['zodb-socket'],
                           'host': global_conf_dict['zodb-host'],
-                          'port': global_conf_dict['zodb-port'], 
+                          'port': global_conf_dict['zodb-port'],
                           'admin-user': global_conf_dict['zodb-admin-user'],
                           'admin-password': global_conf_dict['zodb-admin-password'],
                           'database': global_conf_dict['zodb-db'],
                           'mysql_results_list': []
                         }
+    if global_conf_dict['zodb-host'] == 'localhost':
+        if 'zodb-socket' in global_conf_dict:
+            intermediate_dict['socket'] = global_conf_dict['zodb-socket']
     databases_to_examine.append(intermediate_dict)
     if global_conf_dict['zodb-host'] != global_conf_dict['zep-host']:
         intermediate_dict = { 'prettyName': "'zenoss_zep' Database",
-                              'socket': global_conf_dict['zodb-socket'],
                               'host': global_conf_dict['zep-host'],
                               'port': global_conf_dict['zep-port'],
                               'admin-user': global_conf_dict['zep-admin-user'],
@@ -216,6 +217,10 @@ def main():
                               'database': global_conf_dict['zep-db'],
                               'mysql_results_list': []
                             }
+        if global_conf_dict['zep-host'] == 'localhost':
+            # No zep-socket param, use zodb-socket
+            if 'zodb-socket' in global_conf_dict:
+                intermediate_dict['socket'] = global_conf_dict['zodb-socket']
         databases_to_examine.append(intermediate_dict)
 
     # If running in debug, log global.conf, grab 'SHOW VARIABLES' and zends.cnf, if straightforward (localhost)

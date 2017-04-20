@@ -406,6 +406,8 @@ def findPOSKeyErrors(topnode, attempt_fix, use_unlimited_memory, dmd, log, count
                         progress_bar(counters['item_count'].value(), counters['error_count'].value(),
                                      counters['repair_count'].value(), attempt_fix, current_cycle)
                     counters['item_count'].increment()
+                    if name == "temp_folder" and path_string == "": # skip session db
+                        continue
                     childnode = node._getOb(name)
                     childnode.getId()
                 except _RELEVANT_EXCEPTIONS as e:

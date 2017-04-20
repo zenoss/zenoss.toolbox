@@ -354,6 +354,9 @@ def main():
                         help="output all supported catalogs")
     parser.add_argument("-c", "--catalog", action="store", default="",
                         help="only scan/fix specified catalog")
+    parser.add_argument("--force-fix", action="store_true", default=False,
+                        help="continue without prompting, relevant "
+                             "to '-f' option, but it may damage your data")
     cliOptions = vars(parser.parse_args())
     log, logFileName = ZenToolboxUtils.configure_logging(scriptName, scriptVersion, cliOptions['tmpdir'])
     log.info("Command line options: %s" % (cliOptions))
@@ -362,6 +365,19 @@ def main():
 
     print "\n[%s] Initializing %s v%s (detailed log at %s)" % \
           (time.strftime("%Y-%m-%d %H:%M:%S"), scriptName, scriptVersion, logFileName)
+
+    # Give user option to stop if he hadn't run findposkeyerror, zenrelationscan, zodbscan
+    if cliOptions["fix"] and not cliOptions["force_fix"]:
+        while True:
+            user_answer = raw_input("You should run findposkeyerror, "
+                                    "zenrelationscan, zodbscan before "
+                                    "running zencatalogscan -f. "
+                                    "Otherwise it may damage your "
+                                    "data. Do you want to continue? [y/n]")
+            if user_answer == "y":
+                break
+            elif user_answer == "n":
+                sys.exit(1)
 
     # Attempt to get the zenoss.toolbox lock before any actions performed
     if not ZenToolboxUtils.get_lock("zenoss.toolbox", log):
