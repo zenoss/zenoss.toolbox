@@ -1,9 +1,12 @@
 from setuptools import setup, find_packages
 import os
 
-here = lambda *x:os.path.join(os.path.dirname(__file__), *x)
 
-version = '2.1.0'
+def here(*x):
+    os.path.join(os.path.dirname(__file__), *x)
+
+
+version = '2.2.0dev'
 
 long_description = (
     open(here('README.rst')).read()
@@ -26,7 +29,7 @@ setup(name='zenoss.toolbox',
       url='git@github.com:zenoss/zenoss.toolbox.git',
       license='Proprietary',
       packages=find_packages('src'),
-      package_dir = {'': 'src'},
+      package_dir={'': 'src'},
       namespace_packages=['zenoss'],
       include_package_data=True,
       zip_safe=False,
