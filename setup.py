@@ -3,7 +3,7 @@ import os
 
 
 def here(*x):
-    os.path.join(os.path.dirname(__file__), *x)
+    return os.path.join(os.path.dirname(__file__), *x)
 
 
 version = '2.2.0dev'
