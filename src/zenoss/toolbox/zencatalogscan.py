@@ -31,13 +31,81 @@ from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
 
+try:
+    from Products.Zuul.catalog.interfaces import IModelCatalogTool
+    from Products.Zuul.catalog.legacy import LegacyCatalogAdapter
+    from Products.Zuul.catalog.indexable import OBJECT_UID_FIELD as UID
+    from zenoss.modelindex.model_index import SearchParams
+    from zenoss.modelindex.constants import ZENOSS_MODEL_COLLECTION_NAME
+    USE_MODEL_CATALOG = True
+except ImportError:
+    USE_MODEL_CATALOG = False
+
 
 class CatalogScanInfo(object):
-    def __init__(self, name, actualPath):
+    def __init__(self, dmd, name, actualPath):
+        self.dmd = dmd
         self.prettyName = name
         self.dmdPath = actualPath
         self.initialSize = 0
         self.runResults = {}            # Dict to hold int(cycle): { ZenToolboxUtils.Counters }
+
+    def size(self):
+        raise NotImplementedError
+
+    def get_brains(self):
+        raise NotImplementedError
+
+    def uncatalog_object(self, uid):
+        raise NotImplementedError
+
+    def exists(self):
+        raise NotImplementedError
+
+class ZCatalogScanInfo(CatalogScanInfo):
+    def __init__(self, dmd, name, actualPath):
+        super(ZCatalogScanInfo, self).__init__(dmd, name, actualPath)
+        try:
+            self._catalog = eval(self.dmdPath)
+        except AttributeError:
+            self._catalog = None
+
+    def size(self):
+        return len(self._catalog)
+
+    def get_brains(self):
+        return self._catalog()
+
+    def uncatalog_object(self, uid):
+        self._catalog.uncatalog_object(uid)
+
+    def exists(self):
+        if self._catalog:
+            if USE_MODEL_CATALOG:
+                return not isinstance(self._catalog, LegacyCatalogAdapter)
+            return True
+        return False
+
+class ModelCatalogScanInfo(CatalogScanInfo):
+    def __init__(self, dmd):
+        super(ModelCatalogScanInfo, self).__init__(dmd, 'model_catalog', '')
+        if USE_MODEL_CATALOG:
+            self._catalog_tool = IModelCatalogTool(self.dmd)
+
+    def size(self):
+        return self._catalog_tool.count()
+
+    def get_brains(self):
+        return self._catalog_tool.search(filterPermissions=False)
+
+    def uncatalog_object(self, uid):
+        query={UID: uid}
+        search_params=SearchParams(query=query)
+        self._catalog_tool.model_index.unindex_search(search_params, collection=ZENOSS_MODEL_COLLECTION_NAME)
+
+    def exists(self):
+        return USE_MODEL_CATALOG
+
 
 
 def scan_progress_message(done, fix, cycle, catalog, issues, chunk, log):
@@ -153,18 +221,18 @@ def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
             eventSeverity = 1
             if currentCycle == 1:
                 eventSummaryMsg = "global_catalog 'paths to uids' - No Errors Detected (%d total items)" % \
-                                   (catalogObject.initialSize)
+                                  (catalogObject.initialSize)
             else:
                 eventSummaryMsg = "global_catalog 'paths to uids' - No Errors Detected [--fix was successful] (%d total items)" % \
-                                   (catalogObject.initialSize)
+                                  (catalogObject.initialSize)
         else:
             eventSeverity = 4
             if fix:
                 eventSummaryMsg = "global_catalog 'paths to uids' - %d Errors Remain after --fix [consult log file]  (%d total items)" % \
-                                   (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
             else:
                 eventSummaryMsg = "global_catalog 'paths to uids' - %d Errors Detected [run with --fix]  (%d total items)" % \
-                                   (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
 
         log.debug("Creating event with %s, %s" % (eventSummaryMsg, eventSeverity))
         ZenToolboxUtils.send_summary_event(
@@ -183,8 +251,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
     if (catalogObject.prettyName == 'global_catalog'):
         global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents)
 
-    catalog = eval(catalogObject.dmdPath)
-    catalogObject.initialSize = len(catalog)
+    catalogObject.initialSize = catalogObject.size()
 
     print("[%s] Examining %-35s (%d Objects)" %
           (time.strftime("%Y-%m-%d %H:%M:%S"), catalogObject.prettyName, catalogObject.initialSize))
@@ -202,7 +269,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
         scan_progress_message(False, fix, currentCycle, catalogObject.prettyName, 0, 0, log)
 
         try:
-            brains = eval(catalogObject.dmdPath)()
+            brains = catalogObject.get_brains()
         except Exception:
             raise
 
@@ -229,7 +296,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
                     log.info("Attempting to uncatalog %s" % (objectPathString))
                     try:
                         catalogObject.runResults[currentCycle]['repairCount'].increment()
-                        transact(catalog.uncatalog_object)(objectPathString)
+                        transact(catalogObject.uncatalog_object)(objectPathString)
                     except Exception as e:
                         log.exception(e)
 
@@ -286,37 +353,38 @@ def build_catalog_list(dmd, log):
     """Builds a list of catalogs that are (present and not empty)"""
 
     catalogsToCheck = [
-        CatalogScanInfo('CiscoUCS.ucsSearchCatalog', 'dmd.Devices.CiscoUCS.ucsSearchCatalog'),
-        CatalogScanInfo('CloudStack.HostCatalog', 'dmd.Devices.CloudStack.HostCatalog'),
-        CatalogScanInfo('CloudStack.RouterVMCatalog', 'dmd.Devices.CloudStack.RouterVMCatalog'),
-        CatalogScanInfo('CloudStack.SystemVMCatalog', 'dmd.Devices.CloudStack.SystemVMCatalog'),
-        CatalogScanInfo('CloudStack.VirtualMachineCatalog', 'dmd.Devices.CloudStack.VirtualMachineCatalog'),
-        CatalogScanInfo('Devices.deviceSearch', 'dmd.Devices.deviceSearch'),
-        CatalogScanInfo('Devices.searchRRDTemplates', 'dmd.Devices.searchRRDTemplates'),
-        CatalogScanInfo('Events.eventClassSearch', 'dmd.Events.eventClassSearch'),
-        CatalogScanInfo('global_catalog', 'dmd.global_catalog'),
-        CatalogScanInfo('HP.Proliant.deviceSearch', 'dmd.Devices.Server.HP.Proliant.deviceSearch'),
-        CatalogScanInfo('IPv6Networks.ipSearch', 'dmd.IPv6Networks.ipSearch'),
-        CatalogScanInfo('JobManager.job_catalog', 'dmd.JobManager.job_catalog'),
-        CatalogScanInfo('Layer2.macs_catalog', 'dmd.Devices.macs_catalog'),
-        CatalogScanInfo('maintenanceWindowSearch', 'dmd.maintenanceWindowSearch'),
-        CatalogScanInfo('Manufacturers.productSearch', 'dmd.Manufacturers.productSearch'),
-        CatalogScanInfo('Mibs.mibSearch', 'dmd.Mibs.mibSearch'),
-        CatalogScanInfo('Networks.ipSearch', 'dmd.Networks.ipSearch'),
-        CatalogScanInfo('Services.serviceSearch', 'dmd.Services.serviceSearch'),
-        CatalogScanInfo('Storage.iqnCatalog', 'dmd.Devices.Storage.iqnCatalog'),
-        CatalogScanInfo('Storage.wwnCatalog', 'dmd.Devices.Storage.wwnCatalog'),
-        CatalogScanInfo('vCloud.vCloudVMSearch', 'dmd.Devices.vCloud.vCloudVMSearch'),
-        CatalogScanInfo('VMware.vmwareGuestSearch', 'dmd.Devices.VMware.vmwareGuestSearch'),
-        CatalogScanInfo('vSphere.lunCatalog', 'dmd.Devices.vSphere.lunCatalog'),
-        CatalogScanInfo('vSphere.pnicCatalog', 'dmd.Devices.vSphere.pnicCatalog'),
-        CatalogScanInfo('vSphere.vnicCatalog', 'dmd.Devices.vSphere.vnicCatalog'),
-        CatalogScanInfo('XenServer.PIFCatalog', 'dmd.Devices.XenServer.PIFCatalog'),
-        CatalogScanInfo('XenServer.VIFCatalog', 'dmd.Devices.XenServer.VIFCatalog'),
-        CatalogScanInfo('XenServer.XenServerCatalog', 'dmd.Devices.XenServer.XenServerCatalog'),
-        CatalogScanInfo('ZenLinkManager.layer2_catalog', 'dmd.ZenLinkManager.layer2_catalog'),
-        CatalogScanInfo('ZenLinkManager.layer3_catalog', 'dmd.ZenLinkManager.layer3_catalog'),
-        CatalogScanInfo('zenPackPersistence', 'dmd.zenPackPersistence')
+        ZCatalogScanInfo(dmd, 'CiscoUCS.ucsSearchCatalog', 'dmd.Devices.CiscoUCS.ucsSearchCatalog'),
+        ZCatalogScanInfo(dmd, 'CloudStack.HostCatalog', 'dmd.Devices.CloudStack.HostCatalog'),
+        ZCatalogScanInfo(dmd, 'CloudStack.RouterVMCatalog', 'dmd.Devices.CloudStack.RouterVMCatalog'),
+        ZCatalogScanInfo(dmd, 'CloudStack.SystemVMCatalog', 'dmd.Devices.CloudStack.SystemVMCatalog'),
+        ZCatalogScanInfo(dmd, 'CloudStack.VirtualMachineCatalog', 'dmd.Devices.CloudStack.VirtualMachineCatalog'),
+        ZCatalogScanInfo(dmd, 'Devices.deviceSearch', 'dmd.Devices.deviceSearch'),
+        ZCatalogScanInfo(dmd, 'Devices.searchRRDTemplates', 'dmd.Devices.searchRRDTemplates'),
+        ZCatalogScanInfo(dmd, 'Events.eventClassSearch', 'dmd.Events.eventClassSearch'),
+        ZCatalogScanInfo(dmd, 'global_catalog', 'dmd.global_catalog'),
+        ZCatalogScanInfo(dmd, 'HP.Proliant.deviceSearch', 'dmd.Devices.Server.HP.Proliant.deviceSearch'),
+        ZCatalogScanInfo(dmd, 'IPv6Networks.ipSearch', 'dmd.IPv6Networks.ipSearch'),
+        ZCatalogScanInfo(dmd, 'JobManager.job_catalog', 'dmd.JobManager.job_catalog'),
+        ZCatalogScanInfo(dmd, 'Layer2.macs_catalog', 'dmd.Devices.macs_catalog'),
+        ZCatalogScanInfo(dmd, 'maintenanceWindowSearch', 'dmd.maintenanceWindowSearch'),
+        ZCatalogScanInfo(dmd, 'Manufacturers.productSearch', 'dmd.Manufacturers.productSearch'),
+        ZCatalogScanInfo(dmd, 'Mibs.mibSearch', 'dmd.Mibs.mibSearch'),
+        ZCatalogScanInfo(dmd, 'Networks.ipSearch', 'dmd.Networks.ipSearch'),
+        ZCatalogScanInfo(dmd, 'Services.serviceSearch', 'dmd.Services.serviceSearch'),
+        ZCatalogScanInfo(dmd, 'Storage.iqnCatalog', 'dmd.Devices.Storage.iqnCatalog'),
+        ZCatalogScanInfo(dmd, 'Storage.wwnCatalog', 'dmd.Devices.Storage.wwnCatalog'),
+        ZCatalogScanInfo(dmd, 'vCloud.vCloudVMSearch', 'dmd.Devices.vCloud.vCloudVMSearch'),
+        ZCatalogScanInfo(dmd, 'VMware.vmwareGuestSearch', 'dmd.Devices.VMware.vmwareGuestSearch'),
+        ZCatalogScanInfo(dmd, 'vSphere.lunCatalog', 'dmd.Devices.vSphere.lunCatalog'),
+        ZCatalogScanInfo(dmd, 'vSphere.pnicCatalog', 'dmd.Devices.vSphere.pnicCatalog'),
+        ZCatalogScanInfo(dmd, 'vSphere.vnicCatalog', 'dmd.Devices.vSphere.vnicCatalog'),
+        ZCatalogScanInfo(dmd, 'XenServer.PIFCatalog', 'dmd.Devices.XenServer.PIFCatalog'),
+        ZCatalogScanInfo(dmd, 'XenServer.VIFCatalog', 'dmd.Devices.XenServer.VIFCatalog'),
+        ZCatalogScanInfo(dmd, 'XenServer.XenServerCatalog', 'dmd.Devices.XenServer.XenServerCatalog'),
+        ZCatalogScanInfo(dmd, 'ZenLinkManager.layer2_catalog', 'dmd.ZenLinkManager.layer2_catalog'),
+        ZCatalogScanInfo(dmd, 'ZenLinkManager.layer3_catalog', 'dmd.ZenLinkManager.layer3_catalog'),
+        ZCatalogScanInfo(dmd, 'zenPackPersistence', 'dmd.zenPackPersistence'),
+        ModelCatalogScanInfo(dmd)
     ]
 
     log.debug("Checking %d defined catalogs for (presence and not empty)" % (len(catalogsToCheck)))
@@ -325,14 +393,15 @@ def build_catalog_list(dmd, log):
 
     for catalogObject in catalogsToCheck:
         try:
-            tempBrains = eval(catalogObject.dmdPath)
-            if len(tempBrains) > 0:
-                log.debug("Catalog %s exists, has items - adding to list" % (catalogObject.prettyName))
-                intermediateCatalogList.append(catalogObject)
+            if catalogObject.exists():
+                tempBrains = catalogObject.get_brains()
+                if len(tempBrains) > 0:
+                    log.debug("Catalog %s exists, has items - adding to list" % (catalogObject.prettyName))
+                    intermediateCatalogList.append(catalogObject)
+                else:
+                    log.debug("Skipping catalog %s - exists but has no items" % (catalogObject.prettyName))
             else:
-                log.debug("Skipping catalog %s - exists but has no items" % (catalogObject.prettyName))
-        except AttributeError:
-            log.debug("Skipping catalog %s - catalog not found" % (catalogObject.prettyName))
+                log.debug("Skipping catalog %s - catalog not found" % (catalogObject.prettyName))
         except Exception, e:
             log.exception(e)
 
