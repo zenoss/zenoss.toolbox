@@ -93,10 +93,27 @@ class ModelCatalogScanInfo(CatalogScanInfo):
             self._catalog_tool = IModelCatalogTool(self.dmd)
 
     def size(self):
-        return self._catalog_tool.count()
+        search_results = self._catalog_tool.search(
+            filterPermissions=False,
+            start=0,
+            limit=0
+        )
+        return search_results.total
 
     def get_brains(self):
-        return self._catalog_tool.search(filterPermissions=False)
+        start = 0
+        need_results = True
+        batch_size=10000
+        while need_results:
+            search_results = self._catalog_tool.search(
+                filterPermissions=False,
+                start=start,
+                limit=batch_size
+            )
+            start += batch_size
+            for result in search_results.results:
+                yield result
+            need_results = start < search_results.total
 
     def uncatalog_object(self, uid):
         query={UID: uid}
@@ -273,7 +290,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
         except Exception:
             raise
 
-        catalogSize = len(brains)
+        catalogSize = catalogObject.size()
         if (catalogSize > 50):
             progressBarChunkSize = (catalogSize//50) + 1
         else:
@@ -394,8 +411,7 @@ def build_catalog_list(dmd, log):
     for catalogObject in catalogsToCheck:
         try:
             if catalogObject.exists():
-                tempBrains = catalogObject.get_brains()
-                if len(tempBrains) > 0:
+                if catalogObject.size() > 0:
                     log.debug("Catalog %s exists, has items - adding to list" % (catalogObject.prettyName))
                     intermediateCatalogList.append(catalogObject)
                 else:
