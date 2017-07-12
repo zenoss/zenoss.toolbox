@@ -133,6 +133,8 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
         total_number_of_issues += number_of_issues
         percentage = total_number_of_issues*1.0/initial_catalog_size*100
         scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, total_number_of_issues, percentage, chunk_number, log)
+        # Commit the transaction so that any removed IPs will get unindexed
+        transaction.commit()
 
     if number_of_issues > 0:
         # print 'total_number_of_issues: {0}'.format(total_number_of_issues)
