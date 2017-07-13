@@ -6,7 +6,7 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-#!/opt/zenoss/bin/python
+# !/opt/zenoss/bin/python
 
 scriptVersion = "2.0.0"
 scriptSummary = " - scans catalogs for broken references - WARNING: Before using with --fix " \
@@ -14,7 +14,6 @@ scriptSummary = " - scans catalogs for broken references - WARNING: Before using
                 "no errors. "
 documentationURL = "https://support.zenoss.com/hc/en-us/articles/203118075"
 maxCycles = 12
-
 
 import argparse
 import datetime
@@ -35,8 +34,9 @@ try:
     from Products.Zuul.catalog.interfaces import IModelCatalogTool
     from Products.Zuul.catalog.legacy import LegacyCatalogAdapter
     from Products.Zuul.catalog.indexable import OBJECT_UID_FIELD as UID
-    from zenoss.modelindex.model_index import SearchParams
+    from zenoss.modelindex.model_index import SearchParams, IndexUpdate, UNINDEX
     from zenoss.modelindex.constants import ZENOSS_MODEL_COLLECTION_NAME
+
     USE_MODEL_CATALOG = True
 except ImportError:
     USE_MODEL_CATALOG = False
@@ -48,7 +48,7 @@ class CatalogScanInfo(object):
         self.prettyName = name
         self.dmdPath = actualPath
         self.initialSize = 0
-        self.runResults = {}            # Dict to hold int(cycle): { ZenToolboxUtils.Counters }
+        self.runResults = {}  # Dict to hold int(cycle): { ZenToolboxUtils.Counters }
 
     def size(self):
         raise NotImplementedError
@@ -61,6 +61,10 @@ class CatalogScanInfo(object):
 
     def exists(self):
         raise NotImplementedError
+
+    def commit(self):
+        raise NotImplementedError
+
 
 class ZCatalogScanInfo(CatalogScanInfo):
     def __init__(self, dmd, name, actualPath):
@@ -86,9 +90,14 @@ class ZCatalogScanInfo(CatalogScanInfo):
             return True
         return False
 
+    def commit(self):
+        pass
+
+
 class ModelCatalogScanInfo(CatalogScanInfo):
     def __init__(self, dmd):
         super(ModelCatalogScanInfo, self).__init__(dmd, 'model_catalog', '')
+        self.updates = []
         if USE_MODEL_CATALOG:
             self._catalog_tool = IModelCatalogTool(self.dmd)
 
@@ -103,7 +112,7 @@ class ModelCatalogScanInfo(CatalogScanInfo):
     def get_brains(self):
         start = 0
         need_results = True
-        batch_size=10000
+        batch_size = 10000
         while need_results:
             search_results = self._catalog_tool.search(
                 filterPermissions=False,
@@ -116,20 +125,24 @@ class ModelCatalogScanInfo(CatalogScanInfo):
             need_results = start < search_results.total
 
     def uncatalog_object(self, uid):
-        query={UID: uid}
-        search_params=SearchParams(query=query)
-        self._catalog_tool.model_index.unindex_search(search_params, collection=ZENOSS_MODEL_COLLECTION_NAME)
+        self.updates.append(IndexUpdate(None, op=UNINDEX, uid=uid))
+        if len(self.updates) % 1000 == 0:
+            self.commit()
 
     def exists(self):
         return USE_MODEL_CATALOG
 
+    def commit(self):
+        if self.updates:
+            self._catalog_tool.model_index.process_batched_updates(self.updates)
+            self.updates = []
 
 
 def scan_progress_message(done, fix, cycle, catalog, issues, chunk, log):
     '''Handle output to screen and logfile, remove output from scan_catalog logic'''
     # Logic for log file output messages based on done, issues
     if not done:
-        log.debug("Scan of %s catalog is %2d%% complete" % (catalog, 2*chunk))
+        log.debug("Scan of %s catalog is %2d%% complete" % (catalog, 2 * chunk))
     else:
         if issues > 0:
             log.warning("Scanned %s - found %d issue(s)" % (catalog, issues))
@@ -141,24 +154,24 @@ def scan_progress_message(done, fix, cycle, catalog, issues, chunk, log):
         if fix:
             if not done:
                 inline_print("[%s]  Cleaning  [%-50s] %3d%% [%d Issues Detected]" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk, issues))
             else:
                 inline_print("[%s]  Clean #%2.0d [%-50s] %3.0d%% [%d Issues Detected]\n" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, '='*50, 100, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, '=' * 50, 100, issues))
         else:
             if not done:
                 inline_print("[%s]  Scanning  [%-50s] %3d%% [%d Issues Detected]" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk, issues))
             else:
                 inline_print("[%s]  WARNING   [%-50s] %3.0d%% [%d Issues Detected]\n" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * 50, 100, issues))
     else:
         if not done:
             inline_print("[%s]  Scanning  [%-50s] %3d%% " %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk))
+                         (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk))
         else:
             inline_print("[%s]  Verified  [%-50s] %3.0d%%\n" %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100))
+                         (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * 50, 100))
 
 
 def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
@@ -168,7 +181,7 @@ def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
     catalogObject.initialSize = len(catalogReference.paths)
 
     if (catalogObject.initialSize > 50):
-        progressBarChunkSize = (catalogObject.initialSize//50) + 1
+        progressBarChunkSize = (catalogObject.initialSize // 50) + 1
     else:
         progressBarChunkSize = 1
 
@@ -194,7 +207,8 @@ def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
                 if (catalogObject.runResults[currentCycle]['itemCount'].value() % progressBarChunkSize) == 0:
                     chunkNumber = catalogObject.runResults[currentCycle]['itemCount'].value() // progressBarChunkSize
                     scan_progress_message(False, fix, currentCycle, "global_catalog 'paths to uids'",
-                                          catalogObject.runResults[currentCycle]['errorCount'].value(), chunkNumber, log)
+                                          catalogObject.runResults[currentCycle]['errorCount'].value(), chunkNumber,
+                                          log)
                 if path not in catalogReference.uids:
                     catalogObject.runResults[currentCycle]['errorCount'].increment()
                     broken_rids.append(rid)
@@ -220,7 +234,8 @@ def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
             else:
                 break
             if currentCycle > 1:
-                if catalogObject.runResults[currentCycle]['errorCount'].value() == catalogObject.runResults[currentCycle-1]['errorCount'].value():
+                if catalogObject.runResults[currentCycle]['errorCount'].value() == \
+                        catalogObject.runResults[currentCycle - 1]['errorCount'].value():
                     break
         # Final transaction.abort() to try and free up used memory
         log.debug("Calling transaction.abort() to minimize memory footprint")
@@ -246,10 +261,12 @@ def global_catalog_paths_to_uids(catalogObject, fix, dmd, log, createEvents):
             eventSeverity = 4
             if fix:
                 eventSummaryMsg = "global_catalog 'paths to uids' - %d Errors Remain after --fix [consult log file]  (%d total items)" % \
-                                  (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.runResults[currentCycle]['errorCount'].value(),
+                                   catalogObject.initialSize)
             else:
                 eventSummaryMsg = "global_catalog 'paths to uids' - %d Errors Detected [run with --fix]  (%d total items)" % \
-                                  (catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.runResults[currentCycle]['errorCount'].value(),
+                                   catalogObject.initialSize)
 
         log.debug("Creating event with %s, %s" % (eventSummaryMsg, eventSeverity))
         ZenToolboxUtils.send_summary_event(
@@ -292,7 +309,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
 
         catalogSize = catalogObject.size()
         if (catalogSize > 50):
-            progressBarChunkSize = (catalogSize//50) + 1
+            progressBarChunkSize = (catalogSize // 50) + 1
         else:
             progressBarChunkSize = 1
 
@@ -319,6 +336,7 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
 
         # Final transaction.abort() to try and free up used memory
         log.debug("Calling transaction.abort() to minimize memory footprint")
+        catalogObject.commit()
         transaction.abort()
 
         scan_progress_message(True, fix, currentCycle, catalogObject.prettyName,
@@ -328,7 +346,8 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
             if catalogObject.runResults[currentCycle]['errorCount'].value() == 0:
                 break
             if currentCycle > 1:
-                if catalogObject.runResults[currentCycle]['errorCount'].value() == catalogObject.runResults[currentCycle-1]['errorCount'].value():
+                if catalogObject.runResults[currentCycle]['errorCount'].value() == \
+                        catalogObject.runResults[currentCycle - 1]['errorCount'].value():
                     break
 
     if createEvents:
@@ -343,18 +362,22 @@ def scan_catalog(catalogObject, fix, dmd, log, createEvents):
             eventSeverity = 1
             if currentCycle == 1:
                 eventSummaryMsg = "'%s' - No Errors Detected (%d total items)" % \
-                                   (catalogObject.prettyName, catalogObject.initialSize)
+                                  (catalogObject.prettyName, catalogObject.initialSize)
             else:
                 eventSummaryMsg = "'%s' - No Errors Detected [--fix was successful] (%d total items)" % \
-                                   (catalogObject.prettyName, catalogObject.initialSize)
+                                  (catalogObject.prettyName, catalogObject.initialSize)
         else:
             eventSeverity = 4
             if fix:
                 eventSummaryMsg = "'%s' - %d Errors Remain after --fix [consult log file]  (%d total items)" % \
-                                   (catalogObject.prettyName, catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.prettyName,
+                                   catalogObject.runResults[currentCycle]['errorCount'].value(),
+                                   catalogObject.initialSize)
             else:
                 eventSummaryMsg = "'%s' - %d Errors Detected [run with --fix]  (%d total items)" % \
-                                   (catalogObject.prettyName, catalogObject.runResults[currentCycle]['errorCount'].value(), catalogObject.initialSize)
+                                  (catalogObject.prettyName,
+                                   catalogObject.runResults[currentCycle]['errorCount'].value(),
+                                   catalogObject.initialSize)
 
         log.debug("Creating event with %s, %s" % (eventSummaryMsg, eventSeverity))
         ZenToolboxUtils.send_summary_event(
@@ -513,10 +536,12 @@ def main():
 
     if not cliOptions['skipEvents']:
         if anyIssue:
-            eventSummaryMsg = "%s encountered errors (took %1.2f seconds)" % (scriptName, (time.time() - executionStart))
+            eventSummaryMsg = "%s encountered errors (took %1.2f seconds)" % (
+            scriptName, (time.time() - executionStart))
             eventSeverity = 4
         else:
-            eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % (scriptName, (time.time() - executionStart))
+            eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % (
+            scriptName, (time.time() - executionStart))
             eventSeverity = 2
 
         ZenToolboxUtils.send_summary_event(
