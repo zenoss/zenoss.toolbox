@@ -32,6 +32,12 @@ from ZenToolboxUtils import inline_print
 from ZODB.transact import transact
 from zope.event import notify
 
+try:
+    from Products.Zuul.catalog.interfaces import IModelCatalogTool
+    USE_MODEL_CATALOG = True
+except ImportError:
+    USE_MODEL_CATALOG = False
+
 
 @transact
 def index_device(dev, dmd, log):
@@ -52,6 +58,8 @@ def reindex_dmd_objects(name, type, dmd, log):
     try:
         inline_print("[%s] Reindexing/rebuilding %s ... " % (time.strftime("%Y-%m-%d %H:%M:%S"), name))
         if (name == "DeviceSearch"):
+            if USE_MODEL_CATALOG:
+                raise Exception("DeviceSearch catalog is deprecated")
             print("\n")
             catalogReference = eval(type)
             catalogReference.refreshCatalog(clear=1,pghandler=StdoutHandler())
@@ -132,8 +140,10 @@ def main():
         'Manufacturers': 'dmd.Manufacturers',
         'Networks': 'dmd.Networks',
         'Services': 'dmd.Services',
-        'DeviceSearch': ' dmd.Devices.deviceSearch'
         }
+
+    if not USE_MODEL_CATALOG:
+        types_to_reIndex['DeviceSearch']=' dmd.Devices.deviceSearch'
 
     if cli_options['list'] or not cli_options['type'] :
         # Output list of present catalogs to the UI, perform no further operations
