@@ -1,3 +1,4 @@
+#!/opt/zenoss/bin/python
 ##############################################################################
 #
 # Copyright (C) Zenoss, Inc. 2016, all rights reserved.
@@ -6,7 +7,7 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-# !/opt/zenoss/bin/python
+
 
 scriptVersion = "2.0.0"
 scriptSummary = " - scans catalogs for broken references - WARNING: Before using with --fix " \
@@ -537,11 +538,11 @@ def main():
     if not cliOptions['skipEvents']:
         if anyIssue:
             eventSummaryMsg = "%s encountered errors (took %1.2f seconds)" % (
-            scriptName, (time.time() - executionStart))
+                scriptName, (time.time() - executionStart))
             eventSeverity = 4
         else:
             eventSummaryMsg = "%s completed without errors (took %1.2f seconds)" % (
-            scriptName, (time.time() - executionStart))
+                scriptName, (time.time() - executionStart))
             eventSeverity = 2
 
         ZenToolboxUtils.send_summary_event(
