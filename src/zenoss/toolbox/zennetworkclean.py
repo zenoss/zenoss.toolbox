@@ -1,3 +1,4 @@
+#!/opt/zenoss/bin/python
 ##############################################################################
 #
 # Copyright (C) Zenoss, Inc. 2016, all rights reserved.
@@ -6,12 +7,11 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 #
 ##############################################################################
-#!/opt/zenoss/bin/python
+
 
 scriptVersion = "2.0.0"
 scriptSummary = " - removes old and/or unused ip addresses - "
 documentationURL = "https://support.zenoss.com/hc/en-us/articles/203263699"
-
 
 import argparse
 import datetime
@@ -34,7 +34,7 @@ def scan_progress_message(done, fix, cycle, catalog, issues, total_number_of_iss
     '''Handle output to screen and logfile, remove output from scan_catalog logic'''
     # Logic for log file output messages based on done, issues
     if not done:
-        log.debug("Scan of %s catalog is %2d%% complete" % (catalog, 2*chunk))
+        log.debug("Scan of %s catalog is %2d%% complete" % (catalog, 2 * chunk))
     else:
         if issues > 0:
             log.warning("Scanned %s - found %d stale reference(s)" % (catalog, issues))
@@ -46,30 +46,43 @@ def scan_progress_message(done, fix, cycle, catalog, issues, total_number_of_iss
         if fix:
             if not done:
                 inline_print("[%s]  Cleaning  [%-50s] %3d%% [%d orphaned IPs are deleted]" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk, issues))
             else:
                 inline_print("[%s]  Clean #%2.0d [%-50s] %3.0d%% [%d orphaned IPs are deleted]\n" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, '='*50, 100, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), cycle, '=' * 50, 100, issues))
         else:
             if not done:
                 inline_print("[%s]  Scanning  [%-50s] %3d%% [%d orphaned IPs are detected]" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk, issues))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk, issues))
             else:
                 inline_print("[%s]  WARNING   [%-50s] %3.0d%% [There are %d orphaned IPs (%.1f%%)]\n" %
-                             (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100, issues, percentage))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * 50, 100, issues, percentage))
     else:
         if not done:
             inline_print("[%s]  Scanning  [%-50s] %3d%% " %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*chunk, 2*chunk))
+                         (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * chunk, 2 * chunk))
         else:
             if (total_number_of_issues == 0):
                 inline_print("[%s]  Verified  [%-50s] %3.0d%% [No issues] \n" %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * 50, 100))
             else:
                 inline_print("[%s]  Verified  [%-50s] %3.0d%% [%d orphaned IPs are deleted (%.1f%%)] \n" %
-                         (time.strftime("%Y-%m-%d %H:%M:%S"), '='*50, 100, total_number_of_issues, percentage))
+                             (time.strftime("%Y-%m-%d %H:%M:%S"), '=' * 50, 100, total_number_of_issues, percentage))
 
- 
+
+@transact
+def fix_batch(batch, log):
+    for ip in batch:
+        try:
+            log.info("Attempting to delete %s" % (ip.viewName()))
+            parent = aq_parent(ip)
+            parent._delObject(ip.id)
+            ip._p_deactivate()
+
+        except Exception as e:
+            log.exception(e)
+
+
 @transact
 def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
     """Scan through a catalog looking for broken references"""
@@ -102,15 +115,17 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
             brains = catalog()
             catalog_size = len(brains)
             if (catalog_size > 50):
-                progress_bar_chunk_size = (catalog_size//50) + 1
+                progress_bar_chunk_size = (catalog_size // 50) + 1
         except Exception:
             raise
 
+        batch = []
         for brain in brains:
             scanned_count += 1
             if (scanned_count % progress_bar_chunk_size) == 0:
                 chunk_number = scanned_count // progress_bar_chunk_size
-                scan_progress_message(False, fix, current_cycle, catalog_name, number_of_issues, 0, 0, chunk_number, log)           
+                scan_progress_message(False, fix, current_cycle, catalog_name, number_of_issues, 0, 0, chunk_number,
+                                      log)
             try:
                 ip = brain.getObject()
                 if not ip.interface():
@@ -122,17 +137,17 @@ def scan_catalog(catalog_name, catalog_list, fix, max_cycles, dmd, log):
                 number_of_issues += 1
                 log.warning("Catalog %s contains orphaned object %s" % (catalog_name, ip.viewName()))
                 if fix:
-                    log.info("Attempting to delete %s" % (ip.viewName()))
-                    try:
-                        parent = aq_parent(ip)
-                        parent._delObject(ip.id)
-                        ip._p_deactivate()
+                    batch.append(ip)
+                    if len(batch) % 1000 == 0:
+                        fix_batch(batch, log)
+                        batch = []
 
-                    except Exception as e:
-                        log.exception(e)
+        # fix the last batch
+        fix_batch(batch, log)
         total_number_of_issues += number_of_issues
-        percentage = total_number_of_issues*1.0/initial_catalog_size*100
-        scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, total_number_of_issues, percentage, chunk_number, log)
+        percentage = total_number_of_issues * 1.0 / initial_catalog_size * 100
+        scan_progress_message(True, fix, current_cycle, catalog_name, number_of_issues, total_number_of_issues,
+                              percentage, chunk_number, log)
 
     if number_of_issues > 0:
         # print 'total_number_of_issues: {0}'.format(total_number_of_issues)
@@ -146,7 +161,7 @@ def build_catalog_dict(dmd, log):
     catalogs_to_check = {
         'Networks.ipSearch': 'dmd.Networks.ipSearch',
         'IPv6Networks.ipSearch': 'dmd.IPv6Networks.ipSearch',
-        }
+    }
 
     log.debug("Checking %d supported catalogs for (presence, not empty)" % (len(catalogs_to_check)))
 
@@ -207,15 +222,15 @@ def main():
     # Build list of catalogs, then process catalog(s) and perform reindex if --fix
     present_catalog_dict = build_catalog_dict(dmd, log)
     if cli_options['list']:
-    # Output list of present catalogs to the UI, perform no further operations
+        # Output list of present catalogs to the UI, perform no further operations
         print "List of supported Zenoss catalogs to examine:\n"
         print "\n".join(present_catalog_dict.keys())
         log.info("zennetworkclean finished - list of supported catalogs output to CLI")
     else:
-    # Scan through catalog(s) depending on --catalog parameter
+        # Scan through catalog(s) depending on --catalog parameter
         if cli_options['catalog']:
             if cli_options['catalog'] in present_catalog_dict.keys():
-            # Catalog provided as parameter is present - scan just that catalog
+                # Catalog provided as parameter is present - scan just that catalog
                 any_issue = scan_catalog(cli_options['catalog'], present_catalog_dict[cli_options['catalog']],
                                          cli_options['fix'], cli_options['cycles'], dmd, log)
             else:
@@ -223,7 +238,7 @@ def main():
                 print("Catalog '%s' unrecognized - unable to scan" % (cli_options['catalog']))
                 log.error("CLI input '%s' doesn't match recognized catalogs" % (cli_options['catalog']))
         else:
-        # Else scan for all catalogs in present_catalog_dict
+            # Else scan for all catalogs in present_catalog_dict
             for catalog in present_catalog_dict.keys():
                 any_issue = scan_catalog(catalog, present_catalog_dict[catalog], cli_options['fix'],
                                          cli_options['cycles'], dmd, log) or any_issue
@@ -242,4 +257,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

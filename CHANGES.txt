@@ -3,6 +3,7 @@ Changelog
 
 2.1.0dev
 --------------------
+ * Fixed ZEN-27671: Update toolbox to work with solr model catalog
 
 
 2.0.0

@@ -44,7 +44,7 @@ zennetworkclean
 *How to use zennetworkclean to remove unused network information*
  * https://support.zenoss.com/hc/en-us/articles/203263699
 
-zencheckdebstats
+zencheckdbstats
 ----------------
 *How to use zencheckdbstats to examine database performance*
  * https://support.zenoss.com/hc/en-us/articles/208050803
