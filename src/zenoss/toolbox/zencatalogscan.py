@@ -114,13 +114,16 @@ class ModelCatalogScanInfo(CatalogScanInfo):
         start = 0
         need_results = True
         batch_size = 10000
+        cursor = "*"
         while need_results:
             search_results = self._catalog_tool.search(
                 filterPermissions=False,
                 start=start,
+                cursor=cursor,
                 limit=batch_size
             )
             start += batch_size
+            cursor = search_results.cursor
             for result in search_results.results:
                 yield result
             need_results = start < search_results.total
