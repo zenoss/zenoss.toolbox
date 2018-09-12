@@ -111,19 +111,7 @@ class ModelCatalogScanInfo(CatalogScanInfo):
         return search_results.total
 
     def get_brains(self):
-        start = 0
-        need_results = True
-        batch_size = 10000
-        while need_results:
-            search_results = self._catalog_tool.search(
-                filterPermissions=False,
-                start=start,
-                limit=batch_size
-            )
-            start += batch_size
-            for result in search_results.results:
-                yield result
-            need_results = start < search_results.total
+        return self._catalog_tool.cursor_search()
 
     def uncatalog_object(self, uid):
         self.updates.append(IndexUpdate(None, op=UNINDEX, uid=uid))
