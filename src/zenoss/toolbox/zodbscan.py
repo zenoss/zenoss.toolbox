@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (C) Zenoss, Inc. 2016, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2020, all rights reserved.
 #
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
@@ -8,13 +8,11 @@
 ##############################################################################
 #!/opt/zenoss/bin/python
 
-scriptVersion = "2.0.0"
+scriptVersion = "2.0.1"
 scriptSummary = " - scans ZODB checking objects for dangling references - "
 documentationURL = "https://support.zenoss.com/hc/en-us/articles/203118175"
 
 
-import argparse
-import cPickle
 import cStringIO
 import datetime
 import Globals
@@ -23,25 +21,20 @@ import os
 import sys
 import tempfile
 import time
-import traceback
-import transaction
 import ZConfig
 import ZenToolboxUtils
 
 from collections import deque
-from pickle import Unpickler as UnpicklerBase
-from Products.ZenRelations.RelationshipBase import RelationshipBase
-from Products.ZenRelations.ToManyContRelationship import ToManyContRelationship
+from zodbpickle.pickle import Unpickler as UnpicklerBase
 from Products.ZenUtils.AutoGCObjectReader import gc_cache_every
 from Products.ZenUtils.GlobalConfig import getGlobalConfiguration
-from Products.ZenUtils.ZenScriptBase import ZenScriptBase
 from relstorage.zodbpack import schema_xml
 from time import localtime, strftime
 from ZenToolboxUtils import inline_print
 from ZODB.DB import DB
 from ZODB.POSException import POSKeyError
-from ZODB.transact import transact
 from ZODB.utils import u64
+from ZODB._compat import PersistentUnpickler
 
 schema = ZConfig.loadSchemaFile(cStringIO.StringIO(schema_xml))
 
@@ -67,8 +60,7 @@ class Analyzer(UnpicklerBase):
 def get_refs(p):
     """ Generator-using version of ZODB.serialize.references """
     refs = []
-    u = cPickle.Unpickler(cStringIO.StringIO(p))
-    u.persistent_load = refs
+    u = PersistentUnpickler(None, refs.append, cStringIO.StringIO(p))
     u.noload()
     u.noload()
     for ref in refs:
