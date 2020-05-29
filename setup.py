@@ -6,7 +6,7 @@ def here(*x):
     return os.path.join(os.path.dirname(__file__), *x)
 
 
-version = '2.3.1'
+version = '2.3.2dev'
 
 long_description = (
     open(here('README.rst')).read()
