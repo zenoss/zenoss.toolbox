@@ -1,6 +1,6 @@
 zenoss.toolbox
 ==============
-*Current version: 2.1.0dev*
+*Current version: 2.3.1*
 
 Utilities for analyzing/debugging Zenoss environments as well as tools to maintain/increase performance.  
 
