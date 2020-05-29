@@ -1,10 +1,22 @@
 Changelog
 =========
+2.3.1
+--------------------
+ * Fixed ZEN-32796: Unable to run 'zodbscan' command: 'ValueError: unsupported pickle protocol: 3'
 
-2.1.0dev
+2.3.0
+--------------------
+ * Fixed ZEN-29856: Use pagination to run zencatalogscan
+
+2.2.0
 --------------------
  * Fixed ZEN-27671: Update toolbox to work with solr model catalog
 
+2.1.0
+--------------------
+ * Fixed ZEN-24685: findposkeyerror: skip session db
+ * Fixed ZEN-22208: Allows for zencheckdbstats to be used for 5.x and ZaaS customers
+ * Fixed ZEN-21540: add warning for user when use zencatalog '-f'
 
 2.0.0
 --------------------
